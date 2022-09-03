@@ -1,0 +1,553 @@
+---
+title: "Results_drugs_types_analysis.Rmd"
+author: "Cristina_Galiana"
+date: "3/7/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, echo=FALSE}
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+```
+
+### HP
+
+*HP_female*
+
+```{r}
+profiles_HP_female <- read.csv("/AD_Meta-analysis_results/Results/HP_female/profiles_HP_female.csv")
+```
+
+```{r}
+#read the metrics filtered by significance 
+HP_female_cmap1 <- readRDS("/AD_Meta-analysis_results/Results/HP_female/HP_female_cmap1.rds") 
+HP_female_cmap1$rank <- rank(HP_female_cmap1$scaled_score) 
+HP_female_cmap1$cmap1 <- paste(as.character(HP_female_cmap1$rank),paste("(",round(HP_female_cmap1$scaled_score,digits = 2), ")", sep = ""), sep = " ") 
+HP_female_cmap1 <- HP_female_cmap1 %>% dplyr::select(name_profile, cmap1)
+```
+
+```{r}
+HP_female_cmap2 <- readRDS("/AD_Meta-analysis_results/Results/HP_female/HP_female_cmap2.rds") 
+HP_female_cmap2$rank <- rank(HP_female_cmap2$ncs)
+HP_female_cmap2$cmap2 <- paste(as.character(HP_female_cmap2$rank),paste("(",round(HP_female_cmap2$ncs,digits = 2), ")", sep = ""), sep = " ")
+HP_female_cmap2 <- HP_female_cmap2 %>% dplyr::select(name_profile, cmap2)
+```
+
+```{r}
+HP_female_ZangS <- readRDS("/AD_Meta-analysis_results/Results/HP_female/HP_female_ZangS.rds") %>% arrange(Score)
+HP_female_ZangS$rank <- rank(HP_female_ZangS$Score)
+HP_female_ZangS$ZangS <- paste(as.character(HP_female_ZangS$rank),paste("(",round(HP_female_ZangS$Score,digits = 2), ")", sep = ""), sep = " ")
+HP_female_ZangS <- HP_female_ZangS %>% dplyr::select(name_profile, ZangS)
+```
+
+```{r}
+HP_female_200_XsumS <-readRDS("/AD_Meta-analysis_results/Results/HP_female/HP_female_200_XsumS.rds") %>% arrange(Score) 
+HP_female_200_XsumS$rank <- rank(HP_female_200_XsumS$Score)
+HP_female_200_XsumS$XsumS <- paste(as.character(HP_female_200_XsumS$rank),paste("(",round(HP_female_200_XsumS$Score,digits = 2), ")", sep = ""), sep = " ")
+HP_female_200_XsumS <- HP_female_200_XsumS %>% dplyr::select(name_profile, XsumS)
+```
+
+```{r}
+df_list <- list(profiles_HP_female, HP_female_cmap1, HP_female_cmap2, HP_female_ZangS, HP_female_200_XsumS)
+```
+
+```{r}
+HP_female_all <-df_list %>% reduce(left_join, by='name_profile') %>% select(!c(1:2))
+```
+
+```{r}
+write.csv(HP_female_all, "/AD_Meta-analysis_results/Results/HP_female/profiles_HP_female_connectivity.csv")
+```
+
+
+*HP_male*
+
+```{r}
+profiles_HP_male <- read.csv("/AD_Meta-analysis_results/Results/HP_male/profiles_HP_male.csv")
+```
+
+```{r}
+#read the metrics filtered by significance 
+HP_male_cmap1 <- readRDS("/AD_Meta-analysis_results/Results/HP_male/HP_male_cmap1.rds") 
+HP_male_cmap1$rank <- rank(HP_male_cmap1$scaled_score) 
+HP_male_cmap1$cmap1 <- paste(as.character(HP_male_cmap1$rank),paste("(",round(HP_male_cmap1$scaled_score,digits = 2), ")", sep = ""), sep = " ") 
+HP_male_cmap1 <- HP_male_cmap1 %>% dplyr::select(name_profile, cmap1)
+```
+
+```{r}
+HP_male_cmap2 <- readRDS("/AD_Meta-analysis_results/Results/HP_male/HP_male_cmap2.rds") 
+HP_male_cmap2$rank <- rank(HP_male_cmap2$ncs)
+HP_male_cmap2$cmap2 <- paste(as.character(HP_male_cmap2$rank),paste("(",round(HP_male_cmap2$ncs,digits = 2), ")", sep = ""), sep = " ")
+HP_male_cmap2 <- HP_male_cmap2 %>% dplyr::select(name_profile, cmap2)
+```
+
+```{r}
+HP_male_ZangS <- readRDS("/AD_Meta-analysis_results/Results/HP_male/HP_male_ZangS.rds") %>% arrange(Score)
+HP_male_ZangS$rank <- rank(HP_male_ZangS$Score)
+HP_male_ZangS$ZangS <- paste(as.character(HP_male_ZangS$rank),paste("(",round(HP_male_ZangS$Score,digits = 2), ")", sep = ""), sep = " ")
+HP_male_ZangS <- HP_male_ZangS %>% dplyr::select(name_profile, ZangS)
+```
+
+```{r}
+HP_male_200_XsumS <-readRDS("/AD_Meta-analysis_results/Results/HP_male/HP_male_200_XsumS.rds") %>% arrange(Score) 
+HP_male_200_XsumS$rank <- rank(HP_male_200_XsumS$Score)
+HP_male_200_XsumS$XsumS <- paste(as.character(HP_male_200_XsumS$rank),paste("(",round(HP_male_200_XsumS$Score,digits = 2), ")", sep = ""), sep = " ")
+HP_male_200_XsumS <- HP_male_200_XsumS %>% dplyr::select(name_profile, XsumS)
+```
+
+```{r}
+df_list <- list(profiles_HP_male, HP_male_cmap1, HP_male_cmap2, HP_male_ZangS, HP_male_200_XsumS)
+```
+
+```{r}
+HP_male_all <-df_list %>% reduce(left_join, by='name_profile') %>% select(!c(1:2))
+```
+
+```{r}
+write.csv(HP_male_all, "/AD_Meta-analysis_results/Results/HP_male/profiles_HP_male_connectivity.csv")
+```
+
+```{r}
+HP_by_cellline <- read.csv("/AD_Meta-analysis_results/Results/HP_by_cellline.csv")
+HP_by_metric <- read.csv("/AD_Meta-analysis_results/Results/HP_by_metric.csv")
+```
+
+```{r}
+HP_by_dose <- read.csv("/AD_Meta-analysis_results/Results/HP_by_dose.csv")
+```
+
+```{r}
+HP_by_metric$metric <-factor(HP_by_metric$metric , levels=c("cmap1", "ZhangScore", "cmap2", "Xsum"))
+```
+
+```{r}
+#plot HP_by_metric 
+png(filename = "/images/HP_by_metric.png", height = 900, width = 1000, res = 300)
+  ggplot(data = HP_by_metric, aes(x = metric, y = num_drugs, fill = sexo)) +
+  geom_bar(stat="identity", position="dodge", color = "Black", size = 0.3) + labs( x="Métrica", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  #legend.position = "top",
+  legend.position = c(0.8, 0.85),
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+```{r}
+#plot HP_by_cell 
+png(filename = "/images/HP_by_cell.png", height = 900, width = 1000, res = 300)
+  ggplot(data = HP_by_cellline, aes(x = cell_iname, y = num_drugs, fill = sexo)) +
+  geom_bar(stat="identity", position="dodge", color = "Black", size = 0.3) + labs( x="Línea Celular", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = "none",
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+```{r}
+HP_by_dose$Dose <-factor(HP_by_dose$Dose , levels=c("0.04uM", "0.12uM", "0.37uM", "1.11uM","3.33uM","10uM"))
+```
+
+```{r}
+#plot HP_by_dose 
+png(filename = "/images/HP_by_dose.png", height = 900, width = 1000, res = 300)
+  ggplot(data = HP_by_dose, aes(x = Dose, fill = sexo)) +
+  geom_bar( position="dodge", color = "Black", size = 0.3) + labs( x="Concentración", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = "none",
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+
+### CT
+
+*CT_female*
+
+
+```{r}
+profiles_CT_female <- read.csv("/AD_Meta-analysis_results/Results/CT_female/profiles_CT_female.csv")
+```
+
+```{r}
+#read the metrics filtered by significance 
+CT_female_cmap1 <- readRDS("/AD_Meta-analysis_results/Results/CT_female/CT_female_cmap1.rds") 
+CT_female_cmap1$rank <- rank(CT_female_cmap1$scaled_score) 
+CT_female_cmap1$cmap1 <- paste(as.character(CT_female_cmap1$rank),paste("(",round(CT_female_cmap1$scaled_score,digits = 2), ")", sep = ""), sep = " ") 
+CT_female_cmap1 <- CT_female_cmap1 %>% dplyr::select(name_profile, cmap1)
+```
+
+```{r}
+CT_female_cmap2 <- readRDS("/AD_Meta-analysis_results/Results/CT_female/CT_female_cmap2.rds") 
+CT_female_cmap2$rank <- rank(CT_female_cmap2$ncs)
+CT_female_cmap2$cmap2 <- paste(as.character(CT_female_cmap2$rank),paste("(",round(CT_female_cmap2$ncs,digits = 2), ")", sep = ""), sep = " ")
+CT_female_cmap2 <- CT_female_cmap2 %>% dplyr::select(name_profile, cmap2)
+```
+
+```{r}
+CT_female_ZangS <- readRDS("/AD_Meta-analysis_results/Results/CT_female/CT_female_ZangS.rds") %>% arrange(Score)
+CT_female_ZangS$rank <- rank(CT_female_ZangS$Score)
+CT_female_ZangS$ZangS <- paste(as.character(CT_female_ZangS$rank),paste("(",round(CT_female_ZangS$Score,digits = 2), ")", sep = ""), sep = " ")
+CT_female_ZangS <- CT_female_ZangS %>% dplyr::select(name_profile, ZangS)
+```
+
+```{r}
+CT_female_200_XsumS <-readRDS("/AD_Meta-analysis_results/Results/CT_female/CT_female_200_XsumS.rds") %>% arrange(Score) 
+CT_female_200_XsumS$rank <- rank(CT_female_200_XsumS$Score)
+CT_female_200_XsumS$XsumS <- paste(as.character(CT_female_200_XsumS$rank),paste("(",round(CT_female_200_XsumS$Score,digits = 2), ")", sep = ""), sep = " ")
+CT_female_200_XsumS <- CT_female_200_XsumS %>% dplyr::select(name_profile, XsumS)
+```
+
+```{r}
+df_list <- list(profiles_CT_female, CT_female_cmap1, CT_female_cmap2, CT_female_ZangS, CT_female_200_XsumS)
+```
+
+```{r}
+CT_female_all <-df_list %>% reduce(left_join, by='name_profile') %>% select(!c(1:2))
+```
+
+
+```{r}
+write.csv(CT_female_all, "/AD_Meta-analysis_results/Results/CT_female/profiles_CT_female_connectivity.csv")
+```
+
+
+
+*CT_male*
+
+
+```{r}
+profiles_CT_male <- read.csv("/AD_Meta-analysis_results/Results/CT_male/profiles_CT_male.csv")
+```
+
+```{r}
+#read the metrics filtered by significance 
+CT_male_cmap1 <- readRDS("/AD_Meta-analysis_results/Results/CT_male/CT_male_cmap1.rds") 
+CT_male_cmap1$rank <- rank(CT_male_cmap1$scaled_score) 
+CT_male_cmap1$cmap1 <- paste(as.character(CT_male_cmap1$rank),paste("(",round(CT_male_cmap1$scaled_score,digits = 2), ")", sep = ""), sep = " ") 
+CT_male_cmap1 <- CT_male_cmap1 %>% dplyr::select(name_profile, cmap1)
+```
+
+```{r}
+CT_male_cmap2 <- readRDS("/AD_Meta-analysis_results/Results/CT_male/CT_male_cmap2.rds") 
+CT_male_cmap2$rank <- rank(CT_male_cmap2$ncs)
+CT_male_cmap2$cmap2 <- paste(as.character(CT_male_cmap2$rank),paste("(",round(CT_male_cmap2$ncs,digits = 2), ")", sep = ""), sep = " ")
+CT_male_cmap2 <- CT_male_cmap2 %>% dplyr::select(name_profile, cmap2)
+```
+
+```{r}
+CT_male_ZangS <- readRDS("/AD_Meta-analysis_results/Results/CT_male/CT_male_ZangS.rds") %>% arrange(Score)
+CT_male_ZangS$rank <- rank(CT_male_ZangS$Score)
+CT_male_ZangS$ZangS <- paste(as.character(CT_male_ZangS$rank),paste("(",round(CT_male_ZangS$Score,digits = 2), ")", sep = ""), sep = " ")
+CT_male_ZangS <- CT_male_ZangS %>% dplyr::select(name_profile, ZangS)
+```
+
+```{r}
+CT_male_200_XsumS <-readRDS("/AD_Meta-analysis_results/Results/CT_male/CT_male_200_XsumS.rds") %>% arrange(Score) 
+CT_male_200_XsumS$rank <- rank(CT_male_200_XsumS$Score)
+CT_male_200_XsumS$XsumS <- paste(as.character(CT_male_200_XsumS$rank),paste("(",round(CT_male_200_XsumS$Score,digits = 2), ")", sep = ""), sep = " ")
+CT_male_200_XsumS <- CT_male_200_XsumS %>% dplyr::select(name_profile, XsumS)
+```
+
+```{r}
+df_list <- list(profiles_CT_male, CT_male_cmap1, CT_male_cmap2, CT_male_ZangS, CT_male_200_XsumS)
+```
+
+```{r}
+CT_male_all <-df_list %>% reduce(left_join, by='name_profile') %>% select(!c(1:2))
+```
+
+
+```{r}
+write.csv(CT_male_all, "/AD_Meta-analysis_results/Results/CT_male/profiles_CT_male_connectivity.csv")
+```
+
+```{r}
+CT_by_cellline <- read.csv("/AD_Meta-analysis_results/Results/CT_by_cellline.csv")
+CT_by_metric <- read.csv("/AD_Meta-analysis_results/Results/CT_by_metric.csv")
+```
+
+```{r}
+CT_by_dose <- read.csv("/AD_Meta-analysis_results/Results/CT_by_dose.csv")
+```
+
+```{r}
+CT_by_metric$metric <-factor(CT_by_metric$metric , levels=c("cmap1", "ZhangScore", "cmap2", "Xsum"))
+```
+
+```{r}
+#plot CT_by_metric 
+png(filename = "/images/CT_by_metric.png", height = 900, width = 1000, res = 300)
+  ggplot(data = CT_by_metric, aes(x = metric, y = num_drugs, fill = sexo)) +
+  geom_bar(stat="identity", position="dodge", color = "Black", size = 0.3) + labs( x="Métrica", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  #legend.position = "top",
+  legend.position = c(0.5, 0.85),
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+```{r}
+#plot HP_by_cell 
+png(filename = "/images/CT_by_cell.png", height = 900, width = 1000, res = 300)
+  ggplot(data = CT_by_cellline, aes(x = cell_iname, y = num_drugs, fill = sexo)) +
+  geom_bar(stat="identity", position="dodge", color = "Black", size = 0.3) + labs( x="Línea Celular", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = "none",
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+```{r}
+CT_by_dose$Dose <-factor(CT_by_dose$Dose , levels=c("0.04uM", "0.12uM", "0.37uM", "1.11uM","3.33uM","10uM"))
+```
+
+```{r}
+#plot CT_by_dose 
+png(filename = "/images/CT_by_dose.png", height = 900, width = 1000, res = 300)
+  ggplot(data = CT_by_dose, aes(x = Dose, fill = sexo)) +
+  geom_bar( position="dodge", color = "Black", size = 0.3) + labs( x="Concentración", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = "none",
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+### ALL
+
+*ALL_female*
+
+```{r}
+profiles_ALL_female <- read.csv("/AD_Meta-analysis_results/Results/ALL_female/profiles_ALL_female.csv")
+```
+
+```{r}
+#read the metrics filtered by significance 
+ALL_female_cmap1 <- readRDS("/AD_Meta-analysis_results/Results/ALL_female/ALL_female_cmap1.rds") 
+ALL_female_cmap1$rank <- rank(ALL_female_cmap1$scaled_score) 
+ALL_female_cmap1$cmap1 <- paste(as.character(ALL_female_cmap1$rank),paste("(",round(ALL_female_cmap1$scaled_score,digits = 2), ")", sep = ""), sep = " ") 
+ALL_female_cmap1 <- ALL_female_cmap1 %>% dplyr::select(name_profile, cmap1)
+```
+
+```{r}
+ALL_female_cmap2 <- readRDS("/AD_Meta-analysis_results/Results/ALL_female/ALL_female_cmap2.rds") 
+ALL_female_cmap2$rank <- rank(ALL_female_cmap2$ncs)
+ALL_female_cmap2$cmap2 <- paste(as.character(ALL_female_cmap2$rank),paste("(",round(ALL_female_cmap2$ncs,digits = 2), ")", sep = ""), sep = " ")
+ALL_female_cmap2 <- ALL_female_cmap2 %>% dplyr::select(name_profile, cmap2)
+```
+
+```{r}
+ALL_female_ZangS <- readRDS("/AD_Meta-analysis_results/Results/ALL_female/ALL_female_ZangS.rds") %>% arrange(Score)
+ALL_female_ZangS$rank <- rank(ALL_female_ZangS$Score)
+ALL_female_ZangS$ZangS <- paste(as.character(ALL_female_ZangS$rank),paste("(",round(ALL_female_ZangS$Score,digits = 2), ")", sep = ""), sep = " ")
+ALL_female_ZangS <- ALL_female_ZangS %>% dplyr::select(name_profile, ZangS)
+```
+
+```{r}
+ALL_female_200_XsumS <-readRDS("/AD_Meta-analysis_results/Results/ALL_female/ALL_female_200_XsumS.rds") %>% arrange(Score) 
+ALL_female_200_XsumS$rank <- rank(ALL_female_200_XsumS$Score)
+ALL_female_200_XsumS$XsumS <- paste(as.character(ALL_female_200_XsumS$rank),paste("(",round(ALL_female_200_XsumS$Score,digits = 2), ")", sep = ""), sep = " ")
+ALL_female_200_XsumS <- ALL_female_200_XsumS %>% dplyr::select(name_profile, XsumS)
+```
+
+```{r}
+df_list <- list(profiles_ALL_female, ALL_female_cmap1, ALL_female_cmap2, ALL_female_ZangS, ALL_female_200_XsumS)
+```
+
+```{r}
+ALL_female_all <-df_list %>% reduce(left_join, by='name_profile') %>% select(!c(1:2))
+```
+
+```{r}
+write.csv(ALL_female_all, "/AD_Meta-analysis_results/Results/ALL_female/profiles_ALL_female_connectivity.csv")
+```
+
+
+
+*ALL_male*
+
+
+```{r}
+profiles_ALL_male <- read.csv("/AD_Meta-analysis_results/Results/ALL_male/profiles_ALL_male.csv")
+```
+
+```{r}
+#read the metrics filtered by significance 
+ALL_male_cmap1 <- readRDS("/AD_Meta-analysis_results/Results/ALL_male/ALL_male_cmap1.rds") 
+ALL_male_cmap1$rank <- rank(ALL_male_cmap1$scaled_score) 
+ALL_male_cmap1$cmap1 <- paste(as.character(ALL_male_cmap1$rank),paste("(",round(ALL_male_cmap1$scaled_score,digits = 2), ")", sep = ""), sep = " ") 
+ALL_male_cmap1 <- ALL_male_cmap1 %>% dplyr::select(name_profile, cmap1)
+```
+
+```{r}
+ALL_male_cmap2 <- readRDS("/AD_Meta-analysis_results/Results/ALL_male/ALL_male_cmap2.rds") 
+ALL_male_cmap2$rank <- rank(ALL_male_cmap2$ncs)
+ALL_male_cmap2$cmap2 <- paste(as.character(ALL_male_cmap2$rank),paste("(",round(ALL_male_cmap2$ncs,digits = 2), ")", sep = ""), sep = " ")
+ALL_male_cmap2 <- ALL_male_cmap2 %>% dplyr::select(name_profile, cmap2)
+```
+
+```{r}
+ALL_male_ZangS <- readRDS("/AD_Meta-analysis_results/Results/ALL_male/ALL_male_ZangS.rds") %>% arrange(Score)
+ALL_male_ZangS$rank <- rank(ALL_male_ZangS$Score)
+ALL_male_ZangS$ZangS <- paste(as.character(ALL_male_ZangS$rank),paste("(",round(ALL_male_ZangS$Score,digits = 2), ")", sep = ""), sep = " ")
+ALL_male_ZangS <- ALL_male_ZangS %>% dplyr::select(name_profile, ZangS)
+```
+
+```{r}
+ALL_male_200_XsumS <-readRDS("/AD_Meta-analysis_results/Results/ALL_male/ALL_male_200_XsumS.rds") %>% arrange(Score) 
+ALL_male_200_XsumS$rank <- rank(ALL_male_200_XsumS$Score)
+ALL_male_200_XsumS$XsumS <- paste(as.character(ALL_male_200_XsumS$rank),paste("(",round(ALL_male_200_XsumS$Score,digits = 2), ")", sep = ""), sep = " ")
+ALL_male_200_XsumS <- ALL_male_200_XsumS %>% dplyr::select(name_profile, XsumS)
+```
+
+```{r}
+df_list <- list(profiles_ALL_male, ALL_male_cmap1, ALL_male_cmap2, ALL_male_ZangS, ALL_male_200_XsumS)
+```
+
+```{r}
+ALL_male_all <-df_list %>% reduce(left_join, by='name_profile') %>% select(!c(1:2))
+```
+
+```{r}
+write.csv(ALL_male_all, "/AD_Meta-analysis_results/Results/ALL_male/profiles_ALL_male_connectivity.csv")
+```
+
+```{r}
+ALL_by_cellline <- read.csv("/AD_Meta-analysis_results/Results/ALL_by_cellline.csv")
+ALL_by_metric <- read.csv("/AD_Meta-analysis_results/Results/ALL_by_metric.csv")
+```
+
+```{r}
+ALL_by_dose <- read.csv("/AD_Meta-analysis_results/Results/ALL_by_dose.csv")
+```
+
+```{r}
+ALL_by_metric$metric <-factor(ALL_by_metric$metric , levels=c("cmap1", "ZhangScore", "cmap2", "Xsum"))
+```
+
+```{r}
+#plot CT_by_metric 
+png(filename = "/images/ALL_by_metric.png", height = 900, width = 1000, res = 300)
+  ggplot(data = ALL_by_metric, aes(x = metric, y = num_drugs, fill = sexo)) +
+  geom_bar(stat="identity", position="dodge", color = "Black", size = 0.3) + labs( x="Métrica", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = c(0.5, 0.85),
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+```{r}
+#plot HP_by_cell 
+png(filename = "/images/ALL_by_cell.png", height = 900, width = 1000, res = 300)
+  ggplot(data = ALL_by_cellline, aes(x = cell_iname, y = num_drugs, fill = sexo)) +
+  geom_bar(stat="identity", position="dodge", color = "Black", size = 0.3) + labs( x="Línea Celular", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = "none",
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+```{r}
+ALL_by_dose$Dose <-factor(ALL_by_dose$Dose , levels=c("0.04uM", "0.12uM", "0.37uM", "1.11uM","3.33uM","10uM"))
+```
+
+```{r}
+#plot CT_by_dose 
+png(filename = "/images/ALL_by_dose.png", height = 900, width = 1000, res = 300)
+  ggplot(data = ALL_by_dose, aes(x = Dose, fill = sexo)) +
+  geom_bar( position="dodge", color = "Black", size = 0.3) + labs( x="Concentración", y = "Número de Tratamientos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = "none",
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+
+

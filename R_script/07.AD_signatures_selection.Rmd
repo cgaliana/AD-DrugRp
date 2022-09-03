@@ -1,0 +1,213 @@
+---
+title: "AD signatures selection"
+author: "Cristina_Galiana"
+date: "1/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/AD_Meta-analysis_results')
+```
+
+```{r}
+library(dplyr)
+library(tidyverse)
+```
+
+*HP*
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_HP_female.RData")
+HP_female <- result_meta
+save(HP_female, file= "/AD_Meta-analysis_results/order/HP_female.RData")
+```
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_HP_male.RData")
+HP_male <- result_meta
+save(HP_male, file= "/AD_Meta-analysis_results/order/HP_male.RData")
+```
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_HP_sexdiff.RData")
+HP_sexdiff <- result_meta
+save(HP_sexdiff, file= "/AD_Meta-analysis_results/order/HP_sexdiff.RData")
+```
+
+*CT* 
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_CT_female.RData")
+CT_female <- result_meta
+save(CT_female, file= "/AD_Meta-analysis_results/order/CT_female.RData")
+```
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_CT_male.RData")
+CT_male <- result_meta
+save(CT_male, file= "/AD_Meta-analysis_results/order/CT_male.RData")
+```
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_CT_sexdiff.RData")
+CT_sexdiff <- result_meta
+save(CT_sexdiff, file= "/AD_Meta-analysis_results/order/CT_sexdiff.RData")
+```
+
+*HP+CT*
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_ALL_female.RData")
+ALL_female <- result_meta
+save(ALL_female, file= "/AD_Meta-analysis_results/order/ALL_female.RData")
+```
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_ALL_male.RData")
+ALL_male <- result_meta
+save(ALL_male, file= "/AD_Meta-analysis_results/order/ALL_male.RData")
+```
+
+```{r}
+load("/AD_Meta-analysis_results/MA_20220502_ALL_diffsex.RData")
+ALL_sexdiff <- result_meta
+save(ALL_sexdiff, file= "/order/ALL_sexdiff.RData")
+```
+
+- Select gene space
+
+```{r}
+geneinfo <- read.delim("/GENES/geneinfo_beta.txt", sep = "\t")
+```  
+  
+```{r}
+LG_symbol <- geneinfo %>% filter(feature_space == "landmark") %>% .$gene_symbol
+LG_and_best <- geneinfo %>% filter(feature_space == "landmark" | feature_space == "best inferred") %>% .$gene_symbol
+```
+  
+
+```{r}
+HP_female <- HP_female %>% rownames_to_column("gene_symbol")
+HP_male <- HP_male %>% rownames_to_column("gene_symbol")
+HP_sexdiff <- HP_sexdiff %>% rownames_to_column("gene_symbol")
+CT_female <- CT_female %>% rownames_to_column("gene_symbol")
+CT_male <- CT_male %>% rownames_to_column("gene_symbol")
+CT_sexdiff <- CT_sexdiff %>% rownames_to_column("gene_symbol")
+ALL_female <- ALL_female %>% rownames_to_column("gene_symbol")
+ALL_male <- ALL_male %>% rownames_to_column("gene_symbol")
+ALL_sexdiff <- ALL_sexdiff %>% rownames_to_column("gene_symbol")
+```
+
+  
+```{r}
+list_profiles <- list(HP_female, HP_male,  CT_female, CT_male, ALL_female, ALL_male)
+names(list_profiles) <- c("HP_female", "HP_male", "CT_female", "CT_male", "ALL_female", "ALL_male")
+```
+  
+```{r}
+list_profiles_sex_diff <- list(HP_sexdiff, CT_sexdiff, ALL_sexdiff)
+names(list_profiles_sex_diff) <- c("HP_sexdiff", "CT_sexdiff ", "ALL_sexdiff")
+```
+  
+```{r}
+saveRDS(list_profiles, "/AD_Meta-analysis_results/order/AD_profiles.rds")
+```
+
+```{r}
+saveRDS(list_profiles_sex_diff, "/AD_Meta-analysis_results/order/AD_profiles_sexdiff.rds")
+```
+
+```{r}
+AD_profiles <- readRDS("/AD_Meta-analysis_results/order/AD_profiles.rds")
+```
+
+```{r}
+explore_deg <- function(p) {
+  p_subset <- subset(p, p.adjust.fdr < 0.05)
+  
+  if (!nrow(p_subset) == 0){
+  
+  sig.DEG <- nrow(p_subset)
+  cat("\n\nsignificantly DEG:", sig.DEG)
+  
+  p_subset <- p_subset %>% dplyr::select(gene_symbol, logFC, p.adjust.fdr)
+  p_subset <- p_subset[order(p_subset$logFC),]
+  p_subset$tend <- "up"
+  p_subset$tend[p_subset$logFC < 0] <- "down"
+
+  cat("\nUP:", nrow(p_subset[p_subset$tend == "up",]))
+  cat("\nDOWN:", nrow(p_subset[p_subset$tend == "down",]))
+
+  #landmark in full profile
+  landmark0 <- subset(p, gene_symbol %in% LG_symbol)
+  cat("\nLG in profile:", nrow(landmark0))
+
+  landmark <- subset(p_subset, gene_symbol %in% LG_symbol)
+  if (!nrow(landmark) == 0) {
+  cat("\nLG in significantly DEG:", nrow(landmark))
+  landmark$tend <- "up"
+  landmark$tend[landmark$logFC < 0] <- "down"
+  LGDEG.sigUP <- nrow(landmark[landmark$tend == "up",])
+  LGDEG.sigDOWN <- nrow(landmark[landmark$tend == "down",])
+  cat("\nUP:", landmark %>% filter(tend == "up") %>% .$gene_symbol)
+  cat("\nDOWN:", landmark %>% filter(tend == "down") %>% .$gene_symbol)
+  
+  }
+  else {
+  LGDEG.sigUP <- 0
+  LGDEG.sigDOWN <- 0
+  }
+  best_in <- subset(p_subset, gene_symbol %in% LG_and_best)
+  if (!nrow(best_in) == 0) {
+  cat("\nLG_and_best in significantly DEG:", nrow(best_in))
+  best_in$tend <- "up"
+  best_in$tend[best_in$logFC < 0] <- "down"
+  LG_and_BESTDEG.sigUP <- nrow(best_in[best_in$tend == "up",])
+  LG_and_BESTDEG.sigDOWN <- nrow(best_in[best_in$tend == "down",])
+  cat("\nUP:", best_in %>% filter(tend == "up") %>% .$gene_symbol)
+  cat("\nDOWN:", best_in %>% filter(tend == "down") %>% .$gene_symbol)
+  }
+  else {
+  LG_and_BESTDEG.sigUP <- 0
+  LG_and_BESTDEG.sigDOWN <- 0
+  }
+res <- data.frame(nrow(p_subset), nrow(p_subset[p_subset$tend == "up",]), nrow(p_subset[p_subset$tend == "down",]),    nrow(landmark0),nrow(landmark), LGDEG.sigUP, LGDEG.sigDOWN, nrow(best_in), LG_and_BESTDEG.sigUP, LG_and_BESTDEG.sigDOWN)
+  
+  }else{
+    res <- rep("0", 10)
+  }
+  return(res)
+}
+```
+
+
+```{r}
+#container
+df_explore_deg <- data.frame(matrix(ncol = 10, nrow = length(AD_profiles)))
+rownames(df_explore_deg) <- names(AD_profiles)
+colnames(df_explore_deg) <- c("DEG.sig (fdr < 0.05)", "UP", "DOWN", "LG in profile", "LG in DEG.sig", "LG in DEG.sig UP", "LG in DEG.sig DOWN", "BI in DEG.sig", "BI in DEG.sig UP", "BI in DEG.sig DOWN")
+
+for (i in 1:length(AD_profiles)){
+  df_explore_deg[i,] <- explore_deg(AD_profiles[[i]])
+}
+```
+ 
+```{r}
+write.csv(df_explore_deg, "/AD_Meta-analysis_results/AD_exploratory_analysis_DEG.csv")
+```
+ 
+```{r}
+load("/AD_Meta-analysis_results/order/HP_sexdiff.RData")
+```
+
+```{r}
+df_explore_degsexdiff <- data.frame(matrix(ncol = 10, nrow = length(list_profiles_sexdiff)))
+rownames(df_explore_degsexdiff) <- names(list_profiles_sexdiff)
+colnames(df_explore_degsexdiff) <- c("DEG.sig (fdr < 0.05)", "UP", "DOWN", "LG in profile", "LG in DEG.sig", "LG in DEG.sig UP", "LG in DEG.sig DOWN", "BI in DEG.sig", "BI in DEG.sig UP", "BI in DEG.sig DOWN")
+
+for (i in 1:length(list_profiles_sexdiff)){
+  df_explore_degsexdiff[i,] <- explore_deg(list_profiles_sexdiff[[i]])
+}
+```
+

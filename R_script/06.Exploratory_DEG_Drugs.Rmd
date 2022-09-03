@@ -1,0 +1,136 @@
+---
+title: "Exploratory_ssDEG_Drugs"
+author: "Cristina_Galiana"
+date: "20/4/2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/RESULTS')
+```
+
+```{r}
+library (dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(paletteer)
+library(gridExtra)
+library(RColorBrewer)
+```
+
+*NPC*
+ 
+```{r}
+# Drugs in NPC cell line
+#folders: "Alectinib", "Azacitidine", "Everolimus", "Olaparib", "resveratrol", "CGP-60474"
+```
+
+```{r}
+f_list <-list.files("/RESULTS/NPC/deg/NPC_dose_course", pattern="*.RData", full.names="TRUE")
+```
+
+```{r}
+load("/Data/genes_id.RData")
+```
+
+
+```{r}
+datalist = list()
+for (i in seq_along(f_list)) {
+  
+  load(f_list[[i]])
+  names <- strsplit(f_list[i], "_")
+  drug_name <- strsplit(names[[1]][4], "/")[[1]][2]
+  dose_name <- names[[1]][5]
+  dose_name <- strsplit(dose_name , "u")[[1]][1]
+  
+  #ID <- as.data.frame(gene_id)
+ # colnames(ID) <- "ID"
+  logFC <- deg %>% filter(adj.P.Val < 0.05) %>% select(ID, logFC) 
+  dose <- rep(dose_name, length(dimnames(logFC)[[1]]))
+  drug <- rep(drug_name, length(dimnames(logFC)[[1]]))
+  df <-cbind(logFC, dose, drug)
+  
+  datalist[[i]] <- df
+}
+```
+
+```{r}
+big_data <- do.call(rbind, datalist)
+```
+
+```{r}
+big_data$dose <- factor(big_data$dose , levels=c("0.04", "0.12", "0.37", "1.11", "3.33", "10"))
+```
+
+*ssDEG*
+
+```{r}
+png(filename = "images/npc_boxplot_DEG.png", height = 1200, width = 2000, res = 300)
+palette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+ggplot(big_data,  aes(x=dose , y=logFC, fill = drug)) +
+    geom_boxplot() + 
+    xlab("Concentración") +
+    scale_fill_discrete(name = "Fármaco")+
+  theme(
+    axis.text = element_text(colour = "black", size = 8),
+    axis.title.x = element_text(vjust = -1, size = 10),
+    panel.grid.major = element_line(inherit.blank = TRUE),
+    panel.border = element_rect(fill = "transparent",  size = 0.7),
+    strip.text.x = element_text(size = 10),
+    strip.background = element_rect(color="black", fill="gray", size=0.5, linetype="solid")
+    
+  )+
+    facet_wrap(~drug) 
+dev.off()
+```
+
+*UP & DOWN*
+
+
+```{r}
+datalist = list()
+for (i in seq_along(f_list)) {
+  
+  load(f_list[[i]])
+  names <- strsplit(f_list[i], "_")
+  drug_name <- strsplit(names[[1]][4], "/")[[1]][2]
+  dose_name <- names[[1]][5]
+  dose_name <- strsplit(dose_name , "u")[[1]][1]
+  
+  class <- deg %>% filter(adj.P.Val < 0.05)  %>% mutate(class = ifelse(logFC > 0, "UP", "DOWN")) %>%
+    select(ID, class) 
+  
+  dose <- rep(dose_name, length(dimnames(class)[[1]]))
+  drug <- rep(drug_name, length(dimnames(class)[[1]]))
+  df <-cbind(class, dose, drug)
+  
+  datalist[[i]] <- df
+}
+```
+
+```{r}
+big_data = do.call(rbind, datalist)
+big_data$dose <- factor(big_data$dose , levels=c("0.04", "0.12", "0.37", "1.11", "3.33", "10"))
+```
+
+```{r}
+png(filename = "/images/npc_updown_DEG.png", height = 1200, width = 2000, res = 300)
+ggplot(data=big_data, aes(x = dose, fill = class)) + 
+  geom_bar(color = "blue", size = 0.2) + 
+  scale_fill_brewer(palette = "Blues", direction = 1, name = "")+
+    #scale_fill_discrete(name = "")+
+  theme(
+    axis.text = element_text(colour = "black", size = 8),
+    axis.title.x = element_text(vjust = -1, size = 10),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 0.7),
+  strip.text.x = element_text(size = 10),
+  strip.background = element_rect(color="black", fill="gray", size=0.5, linetype="solid")
+  )+
+  facet_wrap(~drug) + labs(x ="Concentración", y = "sDEG")
+dev.off()
+```
+
+

@@ -1,0 +1,362 @@
+---
+title: "ORA_CT"
+author: "Cristina_Galiana"
+date: "24/5/2022"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/ORA')
+```
+
+```{r}
+library(clusterProfiler)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+library(org.Hs.eg.db)
+```
+
+```{r}
+## load annotations
+load("annotations/annot_genes.RData")
+```
+
+```{r}
+##load annotation file from LINCS & STITCH
+annot <- read.table("/ORA/anotacion_targets/annot_targets_tostitch.txt", sep = "\t")
+```
+
+*Preprocess CT_female targets* 
+
+```{r}
+path_drugs <- "__"
+```
+
+```{r}
+CT_female_targets <- read.csv(paste0(path_drugs,"/drugs_CT_female.csv"))
+```
+
+```{r}
+#merge targets & drugs
+CT_female_targets_annot <- CT_female_targets %>% left_join(annot, by = "cmap_name") %>% dplyr::select(cmap_name, targets)
+```
+
+
+```{r}
+write.csv(CT_female_targets_annot, "/ORA/anotacion_targets/CT_females_drugs_targets.csv")
+```
+
+```{r}
+### Delete the drugs with NA targets and separate by row all targets
+CT_female_targets_annot <- CT_female_targets_annot %>% filter(!is.na(targets)) %>% separate_rows(targets)
+```
+
+```{r}
+# Save the targets as character vector
+genes_female <- CT_female_targets_annot %>% .$targets %>% unique()
+table(duplicated(genes_female))
+```
+
+```{r}
+# Do are all targets well annotated? How many genes are recognized by the org.Hs.eg.db from their gene_SYMBOL? 
+genes_ID_female = AnnotationDbi::select(org.Hs.eg.db, keys= genes_female, columns=c("SYMBOL", "ENTREZID"), keytype="SYMBOL")
+```
+
+```{r}
+## if not, search the gene symbol and correct it in the document. After that, how many genes are recognized? Are there genes tagged as NA?
+which(is.na(genes_ID_female$ENTREZID))
+## How many genes are duplicated? 
+table(duplicated(genes_ID_female$ENTREZID))
+```
+
+```{r}
+## Save the list of drugs & genes (well annotated gene SYMBOL)
+writeLines(as.character(genes_female), con = "/ORA/target_list_ctfemale.txt", sep = "\n")
+```
+
+
+*Preprocess CT_male targets* 
+
+```{r}
+CT_male_targets <- read.csv(paste0(path_drugs,"/drugs_CT_male.csv"))
+```
+
+```{r}
+#merge targets & drugs
+CT_male_targets_annot <- CT_male_targets %>% left_join(annot, by = "cmap_name") %>% dplyr::select(cmap_name, targets)
+```
+
+```{r}
+write.csv(CT_male_targets_annot, "/ORA/anotacion_targets/CT_males_drugs_targets.csv")
+```
+
+```{r}
+#after manual annotation load the file
+CT_male_targets_annot <- read.csv("/ORA/anotacion_targets/CT_males_drugs_targets.csv")
+```
+
+```{r}
+### Delete the drugs with NA targets and separate by row all targets
+CT_male_targets_annot <- CT_male_targets_annot %>% filter(!is.na(targets)) %>% separate_rows(targets)
+```
+
+```{r}
+# Save the targets as character vector
+genes_male <- CT_male_targets_annot %>% .$targets %>% unique()
+table(duplicated(genes_male))
+```
+
+```{r}
+# Do are all targets well annotated? How many genes are recognized by the org.Hs.eg.db from their gene_SYMBOL? 
+genes_ID_male = AnnotationDbi::select(org.Hs.eg.db, keys= genes_male, columns=c("SYMBOL", "ENTREZID"), keytype="SYMBOL")
+```
+
+```{r}
+genes_ID_male <- genes_ID_male %>% filter(!is.na(ENTREZID))
+```
+
+```{r}
+## if not, search the gene symbol and correct it in the document. After that, how many genes are recognized? Are there genes tagged as NA?
+which(is.na(genes_ID_male$ENTREZID))
+## How many genes are duplicated? 
+table(duplicated(genes_ID_male$ENTREZID))
+```
+
+```{r}
+## Save the list of drugs & genes (well annotated gene SYMBOL)
+writeLines(as.character(genes_male), con = "/ORA/target_list_ctmale.txt", sep = "\n")
+```
+
+```{r}
+## building a df with targets and groups(sex)
+f_ct <- read.table("target_list_ctfemale.txt")
+colnames(f_ct) <- c("SYMBOL")
+m_ct <- read.table("target_list_ctmale.txt")
+colnames(m_ct) <- c("SYMBOL")
+```
+
+
+*Enrichment with GO*
+  
+```{r}
+ora_f_ct.BP <- enricher(f_ct$SYMBOL, pvalueCutoff = 0.05, pAdjustMethod = "BH", minGSSize = 10, maxGSSize = 500, qvalueCutoff = 0.05,
+TERM2GENE = Hs_go.BP, TERM2NAME = Hs_go_terms.BP)
+```
+
+```{r}
+res_f_ct.BP <- as.data.frame(ora_f_ct.BP@result) %>% filter(p.adjust <= 0.05) %>% arrange(p.adjust) %>% mutate(sex = "female") %>% mutate(region = "cortex")
+```
+
+```{r}
+ora_m_ct.BP <- enricher(m_ct$SYMBOL, pvalueCutoff = 0.05, pAdjustMethod = "BH", minGSSize = 10, maxGSSize = 500, qvalueCutoff = 0.05,
+TERM2GENE = Hs_go.BP, TERM2NAME = Hs_go_terms.BP)
+```
+
+```{r}
+res_m_ct.BP <- as.data.frame(ora_m_ct.BP@result) %>% filter(p.adjust <= 0.05) %>% arrange(p.adjust) %>% mutate(sex = "male") %>% mutate(region = "cortex")
+```
+
+```{r}
+res_ct_sexdiff_df <- rbind(res_f_ct.BP[1:20,], res_m_ct.BP[1:20,]) 
+```
+
+*barplot for HP*
+ 
+```{r,fig.height=4, fig.width=10}
+hp_df_gbar <- res_hp_sexdiff_df  %>% mutate(Count = ifelse(sex == "female", Count,-1*Count))
+ggplot(hp_df_gbar, aes(x = Description, y = Count, fill = sex)) +
+        geom_bar(stat = "identity")  +
+        coord_flip() 
+      
+```
+
+*dot plot*
+
+```{r}
+png(filename = "/images/ORA_ct_BP_top20.png", height = 1800, width = 2500, res = 300)
+ggplot(res_ct_sexdiff_df, aes(Description, sex, size = Count)) +
+        geom_point(aes(color = p.adjust))  + 
+        coord_flip() +
+        labs( y = "", x = "Descripción")+
+        scale_y_discrete(labels = c("Mujeres", "Hombres"))+
+        guides(shape = guide_legend(override.aes = list(size = 0.3)))+
+        theme_light()+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.text = element_text(size = 8),
+  legend.title = element_text(size = 8),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8))
+dev.off()
+```
+
+```{r}
+female <- res_ct_sexdiff_df %>% filter(sex == "female") %>% .$Description
+male <- res_ct_sexdiff_df %>% filter(sex == "male") %>% .$Description
+#setdiff(female, male)
+setdiff(male, female)
+```
+
+*REACTOME*
+
+```{r}
+Hs_reac <- Hs_reac %>% dplyr::select(REACTOME_ID, SYMBOL)
+```
+
+```{r}
+Hs_reac_terms <- Hs_reac_terms %>%
+  mutate_at("DESCRIPTION", str_replace, "Homo sapiens: ", "") 
+```
+
+```{r}
+ora_f_ct.reac <- enricher(f_ct$SYMBOL, pvalueCutoff = 0.05, pAdjustMethod = "BH", minGSSize = 10, maxGSSize = 500, qvalueCutoff = 0.05,TERM2GENE = Hs_reac, TERM2NAME = Hs_reac_terms)
+```
+
+```{r}
+res_f_ct.reac <- as.data.frame(ora_f_ct.reac) %>% arrange(p.adjust) %>% mutate(sex = "female") %>% mutate(region = "cortex")
+```
+
+```{r}
+ora_m_ct.reac <- enricher(m_ct$SYMBOL, pvalueCutoff = 0.05, pAdjustMethod = "BH", minGSSize = 10, maxGSSize = 500, qvalueCutoff = 0.05, TERM2GENE = Hs_reac, TERM2NAME = Hs_reac_terms)
+```
+
+```{r}
+res_m_ct.reac <- as.data.frame(ora_m_ct.reac)  %>% arrange(p.adjust) %>% mutate(sex = "male") %>% mutate(region = "cortex")
+```
+
+
+```{r}
+res_REAC_ct_sexdiff_df <- rbind(res_f_ct.reac[1:20,], res_m_ct.reac[1:20,]) 
+```
+
+*dotplot*
+
+
+```{r}
+png(filename = "/images/ORA_ct_reac_top20.png", height = 1800, width = 2500, res = 300)
+ggplot(res_REAC_ct_sexdiff_df, aes(Description, sex, size = Count)) +
+        geom_point(aes(color = p.adjust))  + 
+        coord_flip() +
+        labs( y = "", x = "Descripción")+
+        scale_y_discrete(labels = c("Mujeres", "Hombres"))+
+        guides(shape = guide_legend(override.aes = list(size = 0.3)))+
+        theme_light()+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.text = element_text(size = 8),
+  legend.title = element_text(size = 8),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 7))
+dev.off()
+```
+
+
+```{r}
+female <- res_REAC_ct_sexdiff_df %>% filter(sex == "female") %>% .$Description
+male <- res_REAC_ct_sexdiff_df %>% filter(sex == "male") %>% .$Description
+#setdiff(female, male)
+setdiff(male, female)
+```
+
+
+*representation by event*
+
+```{r}
+events <- read.table("/ORA/reactome_path2event_HSA.txt", header = TRUE) %>% mutate(ID = PATH_ID)
+```
+
+```{r}
+events %>% distinct(Event_name) 
+```
+
+```{r}
+events_ct_f <- res_f_ct.reac %>% left_join(events, by = "ID") %>% dplyr::select(ID, Description, sex, region, Event_name) %>% filter(!is.na(Event_name))
+```
+
+```{r}
+events_hp_f %>% distinct(Event_name) 
+```
+
+```{r}
+events_ct_m <- res_m_ct.reac %>% left_join(events, by = "ID") %>% dplyr::select(ID, Description, sex, region, Event_name) %>% filter(!is.na(Event_name))
+```
+
+```{r}
+events_ct_m %>% distinct(Event_name) 
+```
+
+```{r}
+events_complete_ct <- rbind(events_ct_f, events_ct_m ) %>% drop_na()#filter(Event_name == "Disease")
+```
+
+```{r}
+ggplot(events_complete_ct, aes(x = Event_name, fill = sex)) +
+        geom_bar()  +
+        coord_flip() 
+```
+
+```{r}
+saveRDS(events_complete_ct, "events_complete_ct.rds")
+```
+
+
+*KEGG*
+
+```{r}
+Hs_kegg <- Hs_kegg %>% dplyr::select(PATH, SYMBOL)
+```
+
+```{r}
+ora_f_ct.kegg <- enricher(f_ct$SYMBOL, pvalueCutoff = 0.05, pAdjustMethod = "BH", minGSSize = 10, maxGSSize = 500, qvalueCutoff = 0.05,TERM2GENE = Hs_kegg, TERM2NAME = Hs_kegg_terms)
+```
+
+```{r}
+res_f_ct.kegg <- as.data.frame(ora_f_ct.kegg) %>% arrange(p.adjust) %>% mutate(sex = "female") %>% mutate(region = "cortex")
+```
+
+```{r}
+ora_m_ct.kegg <- enricher(m_ct$SYMBOL, pvalueCutoff = 0.05, pAdjustMethod = "BH", minGSSize = 10, maxGSSize = 500, qvalueCutoff = 0.05, TERM2GENE = Hs_kegg, TERM2NAME = Hs_kegg_terms)
+```
+
+```{r}
+res_m_ct.kegg <- as.data.frame(ora_m_ct.kegg)  %>% arrange(p.adjust) %>% mutate(sex = "male") %>% mutate(region = "cortex")
+```
+
+
+```{r}
+res_kegg_ct_sexdiff_df <- rbind(res_f_ct.kegg[1:20,], res_m_ct.kegg) 
+```
+
+*dotplot*
+
+
+```{r}
+png(filename = "/images/ORA_ct_kegg_top20.png", height = 1700, width = 2000, res = 300)
+ggplot(res_kegg_ct_sexdiff_df, aes(Description, sex, size = Count)) +
+        geom_point(aes(color = p.adjust))  + 
+        coord_flip() +
+        labs( y = "", x = "Descripción")+
+        scale_y_discrete(labels = c("Mujeres", "Hombres"))+
+        guides(shape = guide_legend(override.aes = list(size = 0.3)))+
+        theme_light()+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.text = element_text(size = 9),
+  legend.title = element_text(size = 9),
+  axis.text = element_text(colour = "black", size = 9),
+  axis.title.x = element_text(vjust = -1, size = 8))
+dev.off()
+```
+
+```{r}
+female_kegg <- res_kegg_hp_sexdiff_df %>% filter(sex == "female") %>% .$Description
+male_kegg <- res_kegg_hp_sexdiff_df %>% filter(sex == "male") %>% .$Description
+#setdiff(female_kegg, male_kegg)
+setdiff(male_kegg, female_kegg)
+```
+
+

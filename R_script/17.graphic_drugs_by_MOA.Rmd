@@ -1,0 +1,71 @@
+---
+title: "graphic_drugs_by_MOA"
+author: "Cristina_Galiana"
+date: "16/6/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library (dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(paletteer)
+library(gridExtra)
+library(RColorBrewer)
+```
+
+```{r}
+drugs_by_MOA <- read.csv("MOA2.csv") 
+```
+
+```{r}
+png(filename = "/home/cristina/Escritorio/images/all_regions_MOA_2.png", height = 1200, width = 2000, res = 300)
+ggplot(drugs_by_MOA,  ) +
+    geom_bar(aes(x=MOA, fill = MOA)) +
+    xlab("N") +
+  theme(
+    axis.text = element_text(colour = "black", size = 8),
+    axis.title.x = element_text(vjust = -1, size = 10),
+    axis.text.x = element_blank(),
+    legend.position = "none",
+    panel.grid.major = element_line(inherit.blank = TRUE),
+    panel.border = element_rect(fill = "transparent",  size = 0.7),
+    strip.text.x = element_text(size = 10),
+    strip.background = element_rect(color="black", fill="gray", size=0.5, linetype="solid"))+
+    facet_grid(Sexo ~ Region, scales = "free_y") 
+dev.off()
+```
+
+```{r}
+drugs_by_MOA$MOA %>% unique()
+```
+
+```{r}
+drugs_by_MOA$MOA <-factor(drugs_by_MOA$MOA , levels=c("Inhibidor PK", "Inhibidor fosfatasa DUSP3 " , "Inhibidor HDAC", "Inhibidor BET", "Inhibidor demetilasa LSD1", "Agonista receptor glucocorticoide","Agonista receptor retinoide","Análogo sintético de la prostaglandina I2", "Antagonista del receptor neurocinina 1", "Antagonista receptor serotonina 5-HT1D", "Antagonista receptor  serotonina 5-HT2 y 5-HT3","Inhibidor canales de potasio", "Agonista del receptor GABAA" , "Antagonista del receptor de adenosina A2A", "Antagonista receptor adenosina A3", "Inhibidor Bcl-2" ,"Agonista receptor SP1", "Activador AMPK" ,"Antibiótico"))
+```
+
+```{r}
+png(filename = "/home/cristina/Escritorio/images/all_regions_MOA.png", height = 1200, width = 2000, res = 300)
+ggplot(drugs_by_MOA, aes(x=MOA, fill = Sexo)) +
+    geom_bar(position="stack") +
+    xlab("MOA") +
+    ylab("Número de fármacos")+
+      coord_flip()+
+  theme(
+    axis.text = element_text(colour = "black", size = 7.5),
+    #axis.text.x = element_blank(),
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8),
+    axis.title.x = element_text(vjust = -1, size = 8),
+    axis.title.y = element_text(vjust = 2, size = 8),
+    panel.grid.major = element_line(inherit.blank = TRUE),
+    panel.border = element_rect(fill = "transparent",  size = 0.7),
+    strip.text.x = element_text(size = 10),
+    strip.background = element_rect(color="black", fill="gray", size=0.5, linetype="solid"))+
+    facet_grid(~ Region, scales = "free_x") 
+dev.off()
+```

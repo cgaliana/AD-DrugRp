@@ -1,0 +1,1422 @@
+---
+title: "Results_CS_Analysis"
+author: "Cristina_Galiana"
+date: "20/5/2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE, echo=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/AD_Meta-analysis_results/Results')
+```
+
+```{r, echo=FALSE}
+library(stringr)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(ggrepel)
+library(VennDiagram)
+```
+
+```{r}
+meta <- readRDS("meta_alllines.rds")
+```
+
+**HP**
+#### **HP_female**
+
+```{r, echo=FALSE}
+flist_HP_female <-list.files("/AD_Meta-analysis_results/Results/HP_female", pattern="HP_female_.+rds$", full.names="TRUE")
+```
+
+```{r, echo=FALSE}
+# container to save the ranked profiles
+ranked_profiles <- vector("list", length(flist_HP_female))
+names_profiles <- vector("list", length(flist_HP_female))
+
+#container to save the ranked drugs 
+ranked_drugs <- vector("list", length(flist_HP_female))
+names_drugs <- vector("list", length(flist_HP_female))
+```
+
+```{r, echo=FALSE}
+#create a list container
+for (i in seq_along(flist_HP_female)){
+  #name profile
+   name_p <-  str_extract(flist_HP_female[[i]], "HP_.+\\.")
+   
+
+   # read the rds
+   cs_profile <- readRDS(flist_HP_female[[i]])
+   cat("\n",name_p, ": ",nrow(cs_profile))
+   # extract the drugs (ordered by rank)
+   ranked_profiles[[i]] <- cs_profile$name_profile
+   names_profiles[i] <- name_p
+   
+   #nos guardamos nombres únicos de fáramcos 
+   ranked_drugs[[i]] <- unique(cs_profile$cmap_name)
+   names_drugs[i] <- name_p
+}
+names(ranked_profiles) <- names_profiles
+names(ranked_drugs) <- names_drugs
+```
+  
+   - *Profiles*
+   
+```{r, echo=FALSE}
+freq_profiles <- unlist(ranked_profiles)
+freq_table <- as.data.frame(table(freq_profiles))
+x <- as.data.frame(table(freq_profiles)) %>% filter(Freq >=2) %>% dplyr::rename(name_profile = freq_profiles) %>% arrange(desc(Freq))
+```
+   
+   - *Drugs*
+   
+```{r}
+profiles_HP_female <- x %>% inner_join(meta, by = "name_profile") 
+```
+   
+```{r}
+write.csv(profiles_HP_female, "/AD_Meta-analysis_results/Results/HP_female/profiles_HP_female.csv")
+```
+
+```{r}
+drugs_HP_female <- x %>% inner_join(meta, by = "name_profile") %>% distinct(cmap_name)
+```
+
+```{r}
+write.csv(drugs_HP_female, "/home/cristina/Escritorio/TFM/valid_RESULTS/AD_Meta-analysis_results/Results/HP_female/drugs_HP_female.csv")
+```
+
+```{r}
+#read the metrics filtered by significance 
+HP_female_cmap1 <- readRDS("/home/cristina/Escritorio/TFM/valid_RESULTS/AD_Meta-analysis_results/Results/HP_female/HP_female_cmap1.rds") 
+HP_female_cmap1$rank <- rank(HP_female_cmap1$scaled_score) 
+HP_female_cmap1$cmap1 <- paste(as.character(HP_female_cmap1$rank),paste("(",round(HP_female_cmap1$scaled_score,digits = 2), ")", sep = ""), sep = " ") 
+HP_female_cmap1 <- HP_female_cmap1 %>% select(name_profile, cmap1)
+```
+
+```{r}
+HP_female_cmap2 <- readRDS("/home/cristina/Escritorio/TFM/valid_RESULTS/AD_Meta-analysis_results/Results/HP_female/HP_female_cmap2.rds") 
+HP_female_cmap2$rank <- rank(HP_female_cmap2$ncs)
+HP_female_cmap2$cmap2 <- paste(as.character(HP_female_cmap2$rank),paste("(",round(HP_female_cmap2$ncs,digits = 2), ")", sep = ""), sep = " ")
+HP_female_cmap2 <- HP_female_cmap2 %>% select(name_profile, cmap2)
+```
+
+```{r}
+HP_female_ZangS <- readRDS("/home/cristina/Escritorio/TFM/valid_RESULTS/AD_Meta-analysis_results/Results/HP_female/HP_female_ZangS.rds") %>% arrange(Score)
+HP_female_ZangS$rank <- rank(HP_female_ZangS$Score)
+HP_female_ZangS$ZangS <- paste(as.character(HP_female_ZangS$rank),paste("(",round(HP_female_ZangS$Score,digits = 2), ")", sep = ""), sep = " ")
+HP_female_ZangS <- HP_female_ZangS %>% select(name_profile, ZangS)
+```
+
+```{r}
+HP_female_200_XsumS <-readRDS("/home/cristina/Escritorio/TFM/valid_RESULTS/AD_Meta-analysis_results/Results/HP_female/HP_female_200_XsumS.rds") %>% arrange(Score) 
+HP_female_200_XsumS$rank <- rank(HP_female_200_XsumS$Score)
+HP_female_200_XsumS$XsumS <- paste(as.character(HP_female_200_XsumS$rank),paste("(",round(HP_female_200_XsumS$Score,digits = 2), ")", sep = ""), sep = " ")
+HP_female_200_XsumS <- HP_female_200_XsumS %>% select(name_profile, XsumS)
+```
+
+```{r}
+df_list <- list(profiles_HP_female, HP_female_cmap1, HP_female_cmap2, HP_female_ZangS, HP_female_200_XsumS)
+```
+
+```{r}
+HP_female_all <-df_list %>% reduce(left_join, by='name_profile')
+```
+
+*annotation_drugs*
+
+```{r}
+drugs_HP_female <- read.csv("/AD_Meta-analysis_results/Results/HP_female/drugs_HP_female.csv")
+```
+
+```{r}
+annot <- readRDS("drugsAnnotation.rds")
+```
+
+```{r}
+drugs_HP_female %>% left_join(annot, by = "cmap_name") %>% select(cmap_name, status, moa.x, moa.info.x, level_1) %>% distinct()
+```
+
+   
+```{r}
+##files by metric (non-filtered drugs by FDR)
+HP_female_cmap1 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/HP_female/HP_female_cmap1.rds") %>% 
+   select(name_profile, scaled_score, cmap_name) %>% 
+   mutate(metric = "cmap1") %>%
+   rename( CS = scaled_score) %>%
+   arrange(CS)
+
+HP_female_cmap2 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/HP_female/HP_female_cmap2.rds")  %>% 
+   select(name_profile, ncs, cmap_name) %>% 
+   mutate(metric = "cmap2") %>%
+   rename( CS = ncs) %>%
+   arrange(CS)
+
+HP_female_ZhangS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/HP_female/HP_female_ZangS.rds")%>% 
+   select(name_profile, Score,cmap_name) %>% 
+   mutate(metric = "CSS") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+
+HP_female_200_XsumS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/HP_female/HP_female_200_XsumS.rds") %>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "XSum") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+
+```{r}
+all_metrics <- rbind(HP_female_cmap1, HP_female_cmap2, HP_female_ZhangS, HP_female_200_XsumS ) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4 <- profiles_HP_female %>% filter(Freq == 4) %>% .$name_profile
+frec3 <- profiles_HP_female %>% filter(Freq == 3) %>% .$name_profile
+frec2 <- profiles_HP_female %>% filter(Freq == 2) %>% .$name_profile
+```
+
+```{r}
+frec4 <- all_metrics %>% filter(name_profile %in% frec4)
+frec3 <- all_metrics %>% filter(name_profile %in% frec3)
+frec2 <- all_metrics %>% filter(name_profile %in% frec2)
+```
+
+
+```{r}
+png(filename = "/images/HP_female_curves.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2, aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+
+
+*cor & Cos metrics: comparative analysis*
+
+```{r}
+hp_female_cor <- readRDS("/AD_Meta-analysis_results/Results/results_cor/HP_female_Cor.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cor_Pearson") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+hp_female_cos <- readRDS("/AD_Meta-analysis_results/Results/results_cor/HP_female_Coss.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cosine") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_cor <- rbind(hp_female_cor, hp_female_cos) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4_cor <- all_metrics_cor %>% filter(name_profile %in% frec4$name_profile) 
+frec3_cor <- all_metrics_cor %>% filter(name_profile %in% frec3$name_profile)  
+frec2_cor <- all_metrics_cor %>% filter(name_profile %in% frec2$name_profile)  
+```
+
+```{r}
+png(filename = "/images/HP_female_comparative_cor.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_cor, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2_cor , aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3_cor, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4_cor, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   geom_label_repel(data=frec3_cor, aes(label=cmap_name), size = 3, hjust=-0.5, vjust=0.3, color = "red")+
+   geom_label_repel(data=frec4_cor, aes(label=cmap_name), size = 3, hjust=-0.5, vjust=0.3, color = "blue")+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+
+```
+
+*CMap2 metric zooming*
+
+```{r}
+all_metrics_filtered <- all_metrics %>% filter(metric == "cmap2") %>% filter(CS <=0)
+```
+
+```{r}
+frec4_cmap2 <- all_metrics %>% filter(name_profile %in% frec4$name_profile) %>% filter(metric == "cmap2")
+frec3_cmap2 <- all_metrics %>% filter(name_profile %in% frec3$name_profile) %>% filter(metric == "cmap2")
+frec2_cmap2 <- all_metrics %>% filter(name_profile %in% frec2$name_profile) %>% filter(metric == "cmap2")
+```
+
+```{r}
+png(filename = "/images/HP_female_cmap_zoom.png", height = 1200, width = 1400, res = 300)
+ggplot(all_metrics_filtered, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2_cmap2 , aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3_cmap2, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4_cmap2, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   geom_label_repel(data=frec3_cmap2, aes(label=cmap_name), size = 3,  color = "red", nudge_x  = 300,
+    direction    = "y",
+    angle        = 0,
+    vjust        = 0.5,
+    hjust        = 0,
+    segment.size = 0.1)+
+   geom_label_repel(data=frec4_cmap2, aes(label=cmap_name), size = 3,  color = "blue", nudge_x  = 200,
+    direction    = "y",
+    angle        = 0,
+    vjust        = 0.5,
+    hjust        = 1,
+    segment.size = 0.1)+
+    geom_label_repel(data=frec2_cmap2, aes(label=cmap_name), size = 3,  color = "green",nudge_x  = -200,
+    direction    = "y",
+    angle        = 0,
+    vjust        = 1,
+    hjust        = 1,
+    segment.size = 0.1, box.padding = 0.1)+
+   ylim(NA, -0.9) +
+   xlim(-400, 750)
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  #facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+
+```
+
+
+#### **HP_male**
+
+
+```{r, echo=FALSE}
+flist_HP_male <-list.files("/AD_Meta-analysis_results/Results/HP_male", pattern="HP_male_.+rds$", full.names="TRUE")
+```
+
+```{r, echo=FALSE}
+# container to save the ranked profiles
+ranked_profiles <- vector("list", length(flist_HP_male))
+names_profiles <- vector("list", length(flist_HP_male))
+
+#container to save the ranked drugs 
+ranked_drugs <- vector("list", length(flist_HP_male))
+names_drugs <- vector("list", length(flist_HP_male))
+```
+
+```{r, echo=FALSE}
+#create a list container
+for (i in seq_along(flist_HP_male)){
+  #name profile
+   name_p <-  str_extract(flist_HP_male[[i]], "HP_.+\\.")
+   
+   # read the rds
+   cs_profile <- readRDS(flist_HP_male[[i]])
+   cat("\n",name_p, ": ",nrow(cs_profile))
+   # extratc the drugs (ordered by rank)
+   ranked_profiles[[i]] <- cs_profile$name_profile
+   names_profiles[i] <- name_p
+   
+   #nos guardamos nombres únicos de fáramcos 
+   ranked_drugs[[i]] <- unique(cs_profile$cmap_name)
+   names_drugs[i] <- name_p
+}
+names(ranked_profiles) <- names_profiles
+names(ranked_drugs) <- names_drugs
+```
+ 
+ - *Profiles* 
+ 
+```{r, echo=FALSE}
+freq_profiles <- unlist(ranked_profiles)
+x <- as.data.frame(table(freq_profiles)) %>% filter(Freq >=2) %>% rename(name_profile = freq_profiles) %>% arrange(desc(Freq))
+```
+ 
+```{r}
+profiles_HP_male <- x %>% inner_join(meta, by = "name_profile") 
+```
+   
+```{r}
+write.csv(profiles_HP_male, "/home/cristina/Escritorio/TFM/valid_RESULTS/AD_Meta-analysis_results/Results/HP_male/profiles_HP_male.csv")
+```
+
+```{r}
+drugs_HP_male <- profiles_HP_male %>% distinct(cmap_name)
+```
+
+```{r}
+write.csv(drugs_HP_male, "/home/cristina/Escritorio/TFM/valid_RESULTS/AD_Meta-analysis_results/Results/HP_male/drugs_HP_male.csv")
+```
+
+```{r}
+##files by metric
+HP_male_cmap1 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/HP_male/HP_male_cmap1.rds") %>% 
+   select(name_profile, scaled_score) %>% 
+   mutate(metric = "cmap1") %>%
+   rename( CS = scaled_score) %>%
+   arrange(CS)
+
+HP_male_cmap2 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/HP_male/HP_male_cmap2.rds")  %>% 
+   select(name_profile, ncs) %>% 
+   mutate(metric = "cmap2") %>%
+   rename( CS = ncs) %>%
+   arrange(CS)
+
+HP_male_ZhangS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/HP_male/HP_male_ZangS.rds")%>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "CSS") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+
+HP_male_200_XsumS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/HP_male/HP_male_200_XsumS.rds") %>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "XSum") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_hpmale <- rbind(HP_male_cmap1, HP_male_cmap2, HP_male_ZhangS, HP_male_200_XsumS ) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4_hpmale <- profiles_HP_male %>% filter(Freq == 4) %>% .$name_profile
+frec3_hpmale <- profiles_HP_male %>% filter(Freq == 3) %>% .$name_profile
+frec2_hpmale <- profiles_HP_male %>% filter(Freq == 2) %>% .$name_profile
+```
+
+```{r}
+frec4_hpmale <- all_metrics_hpmale %>% filter(name_profile %in% frec4_hpmale)
+frec3_hpmale <- all_metrics_hpmale %>% filter(name_profile %in% frec3_hpmale)
+frec2_hpmale <- all_metrics_hpmale %>% filter(name_profile %in% frec2_hpmale)
+```
+
+```{r}
+png(filename = "/images/HP_male_curves.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_hpmale, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2_hpmale, aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3_hpmale, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4_hpmale, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+
+*cor & Cos metrics: comparative analysis* 
+
+```{r}
+hp_male_cor <- readRDS("/AD_Meta-analysis_results/Results/results_cor/HP_male_Cor.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cor_Pearson") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+hp_male_cos <- readRDS("/AD_Meta-analysis_results/Results/results_cor/HP_male_Coss.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cosine") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_cor <- rbind(hp_male_cor, hp_male_cos) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4_cor <- all_metrics_cor %>% filter(name_profile %in% frec4$name_profile) 
+frec3_cor <- all_metrics_cor %>% filter(name_profile %in% frec3$name_profile)  
+frec2_cor <- all_metrics_cor %>% filter(name_profile %in% frec2$name_profile)  #%>% select(name_profile, CS, Pos)
+```
+
+```{r}
+png(filename = "/images/HP_male_comparative_cor.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_cor, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2_cor , aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3_cor, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4_cor, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   #geom_text(data=frec3_cor,aes(label=cmap_name), size = 3, hjust=-0.5, vjust=0.3, color = "red")+
+   geom_label_repel(data=frec3_cor, aes(label=cmap_name), size = 3, hjust=-0.5, vjust=0.3, color = "red")+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+
+*N drugs by cell and metric*
+
+```{r}
+HP_by_cellline <- read.csv("/AD_Meta-analysis_results/Results/HP_by_cellline.csv")
+HP_by_metric <- read.csv("/AD_Meta-analysis_results/Results/HP_by_metric.csv")
+```
+
+```{r}
+HP_by_metric$metric <-factor(HP_by_metric$metric , levels=c("cmap1", "ZhangScore", "cmap2", "Xsum"))
+```
+
+```{r}
+#plot HP_by_metric 
+png(filename = "/images/HP_by_metric.png", height = 900, width = 1000, res = 300)
+  ggplot(data = HP_by_metric, aes(x = metric, y = num_drugs, fill = sexo)) +
+  geom_bar(stat="identity", position="dodge", color = "Black", size = 0.3) + labs( x="Métrica", y = "Número de Fármacos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = c(0.8, 0.85),
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+```{r}
+#plot HP_by_cell 
+png(filename = "/images/HP_by_cell.png", height = 900, width = 1000, res = 300)
+  ggplot(data = HP_by_cellline, aes(x = metric, y = num_drugs, fill = sexo)) +
+  geom_bar(stat="identity", position="dodge", color = "Black", size = 0.3) + labs( x="Métrica", y = "Número de Fármacos") + 
+  scale_fill_manual(values = c("Mujeres" = "#1f78b4",
+                               "Hombres" = "#edf8b1"))+
+     theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = c(0.8, 0.85),
+  legend.text = element_text(size = 8),
+  legend.title = element_blank(),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  axis.title.y = element_text(vjust = 2, size = 8))
+dev.off()
+```
+
+*intersect*
+
+```{r, echo=FALSE}
+HP_f <- drugs_HP_female %>% select(cmap_name) %>% distinct() %>% .$cmap_name
+HP_m <- drugs_HP_male %>% select(cmap_name) %>% distinct() %>% .$cmap_name
+drugs_total <- list(HP_f, HP_m)
+overlap_up <- calculate.overlap(drugs_total)
+```
+
+```{r}
+# intersect drugs
+venn.diagram(
+    x = list(HP_f, HP_m),
+  category.names = c("Mujeres", "Hombres"),
+  filename = '/images/drugsnames_HP_venn.png',
+  output = TRUE,
+          imagetype="png",
+          height = 480 , 
+          width = 480 , 
+          resolution = 300,
+          compression = "lzw",
+          lwd = 0.3,
+          col = "white",
+          fill = c(alpha('#1f78b4',0.3), alpha("#edf8b1",1)),
+          cex = 0.4,
+          fontfamily = "sans",
+          cat.cex = 0.3,
+          cat.fontface = "bold",
+          cat.default.pos = "outer",
+          cat.fontfamily = "sans",
+          cat.col = "black",
+          #rotation = 1
+        )
+```
+
+#### **CT_female**
+
+
+```{r, echo=FALSE}
+flist_CT_female <-list.files("/AD_Meta-analysis_results/Results/CT_female", pattern="CT_female_.+rds$", full.names="TRUE")
+```
+
+```{r, echo=FALSE}
+# container to save the ranked profiles
+ranked_profiles <- vector("list", length(flist_CT_female))
+names_profiles <- vector("list", length(flist_CT_female))
+
+#container to save the ranked drugs 
+ranked_drugs <- vector("list", length(flist_CT_female))
+names_drugs <- vector("list", length(flist_CT_female))
+```
+
+```{r, echo=FALSE}
+#create a list container
+for (i in seq_along(flist_CT_female)){
+  #name profile
+   name_p <-  str_extract(flist_CT_female[[i]], "CT_.+\\.")
+   
+
+   # read the rds
+   cs_profile <- readRDS(flist_CT_female[[i]])
+   cat("\n",name_p, ": ",nrow(cs_profile))
+   # extratc the drugs (ordered by rank)
+   ranked_profiles[[i]] <- cs_profile$name_profile
+   names_profiles[i] <- name_p
+   
+   #nos guardamos nombres únicos de fáramcos 
+   ranked_drugs[[i]] <- unique(cs_profile$cmap_name)
+   names_drugs[i] <- name_p
+}
+names(ranked_profiles) <- names_profiles
+names(ranked_drugs) <- names_drugs
+```
+  
+   - *Profiles*
+   
+```{r, echo=FALSE}
+freq_profiles <- unlist(ranked_profiles)
+x <- as.data.frame(table(freq_profiles)) %>% filter(Freq >=2) %>% rename(name_profile = freq_profiles) %>% arrange(desc(Freq))
+```
+
+```{r}
+profiles_CT_female <- x %>% inner_join(meta, by = "name_profile") 
+```
+   
+```{r}
+write.csv(profiles_CT_female, "/AD_Meta-analysis_results/Results/CT_female/profiles_CT_female.csv")
+```
+
+```{r}
+drugs_CT_female <- profiles_CT_female %>% distinct(cmap_name)
+```
+
+```{r}
+write.csv(drugs_CT_female, "/AD_Meta-analysis_results/Results/CT_female/drugs_CT_female.csv")
+```
+
+```{r}
+##files by metric
+CT_female_cmap1 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/CT_female/CT_female_cmap1.rds") %>% 
+   select(name_profile, scaled_score) %>% 
+   mutate(metric = "cmap1") %>%
+   rename( CS = scaled_score) %>%
+   arrange(CS)
+
+CT_female_cmap2 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/CT_female/CT_female_cmap2.rds")  %>% 
+   select(name_profile, ncs) %>% 
+   mutate(metric = "cmap2") %>%
+   rename( CS = ncs) %>%
+   arrange(CS)
+
+CT_female_ZhangS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/CT_female/CT_female_ZangS.rds")%>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "CSS") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+
+CT_female_200_XsumS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/CT_female/CT_female_200_XsumS.rds") %>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "XSum") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_CT_female <- rbind(CT_female_cmap1, CT_female_cmap2, CT_female_ZhangS, CT_female_200_XsumS ) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4 <- profiles_CT_female %>% filter(Freq == 4) %>% .$name_profile
+frec3 <- profiles_CT_female %>% filter(Freq == 3) %>% .$name_profile
+frec2 <- profiles_CT_female %>% filter(Freq == 2) %>% .$name_profile
+```
+
+```{r}
+frec4 <- all_metrics_CT_female %>% filter(name_profile %in% frec4)
+frec3 <- all_metrics_CT_female %>% filter(name_profile %in% frec3)
+frec2 <- all_metrics_CT_female %>% filter(name_profile %in% frec2)
+```
+
+```{r}
+png(filename = "/images/CT_female_curves.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_CT_female, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2, aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+
+  
+ *cor & Cos metrics: comparative analysis* 
+
+```{r}
+ct_female_cor <- readRDS("/AD_Meta-analysis_results/Results/results_cor/CT_female_Cor.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cor_Pearson") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+ct_female_cos <- readRDS("/AD_Meta-analysis_results/Results/results_cor/CT_female_Coss.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cosine") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_cor <- rbind(ct_female_cor, ct_female_cos) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4_cor <- all_metrics_cor %>% filter(name_profile %in% frec4$name_profile) 
+frec3_cor <- all_metrics_cor %>% filter(name_profile %in% frec3$name_profile)  
+frec2_cor <- all_metrics_cor %>% filter(name_profile %in% frec2$name_profile)  #%>% select(name_profile, CS, Pos)
+```
+
+```{r}
+png(filename = "/images/CT_female_comparative_cor.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_cor, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2_cor , aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3_cor, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4_cor, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   #geom_text(data=frec3_cor,aes(label=cmap_name), size = 3, hjust=-0.5, vjust=0.3, color = "red")+
+   geom_label_repel(data=frec3_cor, aes(label=cmap_name), size = 3, hjust=0, vjust=1, color = "red")+
+   geom_label_repel(data=frec2_cor, aes(label=cmap_name), size = 3, hjust=-0.5, vjust=0.3, color = "green",  box.padding = 0.1)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+
+```
+ 
+ 
+#### **CT_male**
+ 
+```{r, echo=FALSE}
+flist_CT_male <-list.files("/AD_Meta-analysis_results/Results/CT_male", pattern="CT_male_.+rds$", full.names="TRUE")
+```
+
+```{r, echo=FALSE}
+# container to save the ranked profiles
+ranked_profiles <- vector("list", length(flist_CT_male))
+names_profiles <- vector("list", length(flist_CT_male))
+
+#container to save the ranked drugs 
+ranked_drugs <- vector("list", length(flist_CT_male))
+names_drugs <- vector("list", length(flist_CT_male))
+```
+
+```{r, echo=FALSE}
+#create a list container
+for (i in seq_along(flist_CT_male)){
+  #name profile
+   name_p <-  str_extract(flist_CT_male[[i]], "CT_.+\\.")
+   
+
+   # read the rds
+   cs_profile <- readRDS(flist_CT_male[[i]])
+   cat("\n",name_p, ": ",nrow(cs_profile))
+   # extratc the drugs (ordered by rank)
+   ranked_profiles[[i]] <- cs_profile$name_profile
+   names_profiles[i] <- name_p
+   
+   #nos guardamos nombres únicos de fáramcos 
+   ranked_drugs[[i]] <- unique(cs_profile$cmap_name)
+   names_drugs[i] <- name_p
+}
+names(ranked_profiles) <- names_profiles
+names(ranked_drugs) <- names_drugs
+```
+
+ - *Profiles* 
+   
+```{r, echo=FALSE}
+freq_profiles <- unlist(ranked_profiles)
+x <- as.data.frame(table(freq_profiles)) %>% filter(Freq >=2) %>% rename(name_profile = freq_profiles) %>% arrange(desc(Freq))
+```
+ 
+```{r}
+profiles_CT_male <- x %>% inner_join(meta, by = "name_profile") 
+```
+   
+```{r}
+write.csv(profiles_CT_male, "/AD_Meta-analysis_results/Results/CT_male/profiles_CT_male.csv")
+```
+
+```{r}
+drugs_CT_male <- profiles_CT_male %>% distinct(cmap_name)
+```
+
+```{r}
+write.csv(drugs_CT_male, "/AD_Meta-analysis_results/Results/CT_male/drugs_CT_male.csv")
+```
+
+
+```{r}
+##files by metric
+CT_male_cmap1 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/CT_male/CT_male_cmap1.rds") %>% 
+   select(name_profile, scaled_score) %>% 
+   mutate(metric = "cmap1") %>%
+   rename( CS = scaled_score) %>%
+   arrange(CS)
+
+CT_male_cmap2 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/CT_male/CT_male_cmap2.rds")  %>% 
+   select(name_profile, ncs) %>% 
+   mutate(metric = "cmap2") %>%
+   rename( CS = ncs) %>%
+   arrange(CS)
+
+CT_male_ZhangS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/CT_male/CT_male_ZangS.rds")%>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "CSS") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+
+CT_male_200_XsumS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/CT_male/CT_male_200_XsumS.rds") %>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "XSum") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_CT_male <- rbind(CT_male_cmap1, CT_male_cmap2, CT_male_ZhangS, CT_male_200_XsumS ) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4 <- profiles_CT_male %>% filter(Freq == 4) %>% .$name_profile
+frec3 <- profiles_CT_male %>% filter(Freq == 3) %>% .$name_profile
+frec2 <- profiles_CT_male %>% filter(Freq == 2) %>% .$name_profile
+```
+
+```{r}
+frec4 <- all_metrics_CT_male %>% filter(name_profile %in% frec4)
+frec3 <- all_metrics_CT_male %>% filter(name_profile %in% frec3)
+frec2 <- all_metrics_CT_male %>% filter(name_profile %in% frec2)
+```
+
+```{r}
+png(filename = "/images/CT_male_curves.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_CT_female, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2, aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+ 
+ *cor & Cos metrics: comparative analysis* 
+
+```{r}
+ct_male_cor <- readRDS("/AD_Meta-analysis_results/Results/results_cor/CT_male_Cor.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cor_Pearson") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+ct_male_cos <- readRDS("/AD_Meta-analysis_results/Results/results_cor/CT_male_Coss.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cosine") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_cor <- rbind(ct_male_cor, ct_male_cos) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4_cor <- all_metrics_cor %>% filter(name_profile %in% frec4$name_profile) 
+frec3_cor <- all_metrics_cor %>% filter(name_profile %in% frec3$name_profile)  
+frec2_cor <- all_metrics_cor %>% filter(name_profile %in% frec2$name_profile)  #%>% select(name_profile, CS, Pos)
+```
+
+```{r}
+png(filename = "/images/CT_male_comparative_cor.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_cor, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2_cor , aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3_cor, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4_cor, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   #geom_text(data=frec3_cor,aes(label=cmap_name), size = 3, hjust=-0.5, vjust=0.3, color = "red")+
+   geom_label_repel(data=frec3_cor, aes(label=cmap_name), size = 3, hjust=0, vjust=1, color = "red")+
+   geom_label_repel(data=frec2_cor, aes(label=cmap_name), size = 3, hjust=-0.5, vjust=0.3, color = "green",  box.padding = 0.1)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+
+*intersect*
+
+```{r, echo=FALSE}
+CT_f <- drugs_CT_female %>% select(cmap_name) %>% distinct() %>% .$cmap_name
+CT_m <- drugs_CT_male %>% select(cmap_name) %>% distinct() %>% .$cmap_name
+drugs_total <- list(CT_f, CT_m)
+overlap_up <- calculate.overlap(drugs_total)
+```
+
+```{r, echo=FALSE}
+# intersect drugs
+venn.diagram(
+    x = list(CT_f, CT_m),
+  category.names = c("Mujeres", "Hombres"),
+  filename = '/images/drugsnames_CT_venn.png',
+  output = TRUE,
+          imagetype="png",
+          height = 480 , 
+          width = 480 , 
+          resolution = 300,
+          compression = "lzw",
+          lwd = 0.3,
+          col = "white",
+          fill = c(alpha('#1f78b4',0.3), alpha("#edf8b1",1)),
+          cex = 0.4,
+          fontfamily = "sans",
+          cat.cex = 0.3,
+          cat.fontface = "bold",
+          cat.default.pos = "outer",
+          cat.fontfamily = "sans",
+          cat.col = "black",
+          #rotation = 1
+        )
+```
+
+```{r}
+# intersect drugs
+venn.diagram(
+    x = list(HP_f, HP_m, CT_f, CT_m),
+  category.names = c("HP_M", "HP_H", "CT_M", "CT_H"),
+  filename = '/images/drugsnames_CT_HP_venn.png',
+  output = TRUE,
+          imagetype="png",
+          height = 480 , 
+          width = 480 , 
+          resolution = 300,
+          compression = "lzw",
+          lwd = 0.3,
+          col = "white",
+          fill = c(alpha('#1f78b4',0.3), alpha("#edf8b1",1), alpha("#2c7fb8",0.3), alpha("#8856a7",0.3)), 
+          cex = 0.4,
+          fontfamily = "sans",
+          cat.cex = 0.3,
+          cat.fontface = "bold",
+          cat.default.pos = "outer",
+          cat.fontfamily = "sans",
+          cat.col = "black",
+          #rotation = 1
+        )
+```
+
+### *ALL = HP+CT*
+#### **ALL_female**
+ 
+```{r, echo=FALSE}
+flist_ALL_female <-list.files("AD_Meta-analysis_results/Results/ALL_female", pattern="ALL_female_.+rds$", full.names="TRUE")
+```
+
+```{r, echo=FALSE}
+# container to save the ranked profiles
+ranked_profiles <- vector("list", length(flist_ALL_female))
+names_profiles <- vector("list", length(flist_ALL_female))
+
+#container to save the ranked drugs 
+ranked_drugs <- vector("list", length(flist_ALL_female))
+names_drugs <- vector("list", length(flist_ALL_female))
+```
+
+```{r, echo=FALSE}
+#create a list container
+for (i in seq_along(flist_ALL_female)){
+  #name profile
+   name_p <-  str_extract(flist_ALL_female[[i]], "ALL_.+\\.")
+   
+
+   # read the rds
+   cs_profile <- readRDS(flist_ALL_female[[i]])
+   cat("\n",name_p, ": ",nrow(cs_profile))
+   # extratc the drugs (ordered by rank)
+   ranked_profiles[[i]] <- cs_profile$name_profile
+   names_profiles[i] <- name_p
+   
+   #nos guardamos nombres únicos de fáramcos 
+   ranked_drugs[[i]] <- unique(cs_profile$cmap_name)
+   names_drugs[i] <- name_p
+}
+names(ranked_profiles) <- names_profiles
+names(ranked_drugs) <- names_drugs
+```
+   
+   - *Profiles*
+
+```{r, echo=FALSE}
+freq_profiles <- unlist(ranked_profiles)
+x <- as.data.frame(table(freq_profiles)) %>% filter(Freq >=2) %>% rename(name_profile = freq_profiles) %>% arrange(desc(Freq))
+```
+
+```{r}
+profiles_ALL_female <- x %>% inner_join(meta, by = "name_profile") 
+```
+   
+```{r}
+write.csv(profiles_ALL_female, "/AD_Meta-analysis_results/Results/ALL_female/profiles_ALL_female.csv")
+```
+
+```{r}
+drugs_ALL_female <- profiles_ALL_female %>% distinct(cmap_name)
+```
+
+```{r}
+write.csv(drugs_ALL_female, "/AD_Meta-analysis_results/Results/ALL_female/drugs_ALL_female.csv")
+```
+
+
+```{r}
+##files by metric
+ALL_female_cmap1 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/ALL_female/ALL_female_cmap1.rds") %>% 
+   select(name_profile, scaled_score) %>% 
+   mutate(metric = "cmap1") %>%
+   rename( CS = scaled_score) %>%
+   arrange(CS)
+
+ALL_female_cmap2 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/ALL_female/ALL_female_cmap2.rds")  %>% 
+   select(name_profile, ncs) %>% 
+   mutate(metric = "cmap2") %>%
+   rename( CS = ncs) %>%
+   arrange(CS)
+
+ALL_female_ZhangS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/ALL_female/ALL_female_ZangS.rds")%>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "CSS") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+
+ALL_female_200_XsumS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/ALL_female/ALL_female_200_XsumS.rds") %>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "XSum") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_ALL_female <- rbind(ALL_female_cmap1, ALL_female_cmap2, ALL_female_ZhangS, ALL_female_200_XsumS ) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4 <- profiles_ALL_female %>% filter(Freq == 4) %>% .$name_profile
+frec3 <- profiles_ALL_female %>% filter(Freq == 3) %>% .$name_profile
+frec2 <- profiles_ALL_female %>% filter(Freq == 2) %>% .$name_profile
+```
+
+```{r}
+frec4 <- all_metrics_ALL_female %>% filter(name_profile %in% frec4)
+frec3 <- all_metrics_ALL_female %>% filter(name_profile %in% frec3)
+frec2 <- all_metrics_ALL_female %>% filter(name_profile %in% frec2)
+```
+
+```{r}
+png(filename = "/images/ALL_female_curves.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_ALL_female, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2, aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+ 
+
+ *cor & Cos metrics: comparative analysis* 
+
+```{r}
+all_female_cor <- readRDS("/AD_Meta-analysis_results/Results/results_cor/ALL_female_Cor.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cor_Pearson") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+all_female_cos <- readRDS("/AD_Meta-analysis_results/Results/results_cor/ALL_female_Coss.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cosine") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_cor <- rbind(all_female_cor, all_female_cos) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4_cor <- all_metrics_cor %>% filter(name_profile %in% frec4$name_profile) 
+frec3_cor <- all_metrics_cor %>% filter(name_profile %in% frec3$name_profile)  
+frec2_cor <- all_metrics_cor %>% filter(name_profile %in% frec2$name_profile)  #%>% select(name_profile, CS, Pos)
+```
+
+```{r}
+png(filename = "/images/ALL_female_comparative_cor.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_cor, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2_cor , aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3_cor, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4_cor, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+
+
+#### **ALL_male**
+ 
+```{r, echo=FALSE}
+flist_ALL_male <-list.files("/AD_Meta-analysis_results/Results/ALL_male", pattern="ALL_male_.+rds$", full.names="TRUE")
+```
+
+```{r, echo=FALSE}
+# container to save the ranked profiles
+ranked_profiles <- vector("list", length(flist_ALL_male))
+names_profiles <- vector("list", length(flist_ALL_male))
+
+#container to save the ranked drugs 
+ranked_drugs <- vector("list", length(flist_ALL_male))
+names_drugs <- vector("list", length(flist_ALL_male))
+```
+
+```{r, echo=FALSE}
+#create a list container
+for (i in seq_along(flist_ALL_male)){
+  #name profile
+   name_p <-  str_extract(flist_ALL_male[[i]], "ALL_.+\\.")
+   
+
+   # read the rds
+   cs_profile <- readRDS(flist_ALL_male[[i]])
+   cat("\n",name_p, ": ",nrow(cs_profile))
+   # extratc the drugs (ordered by rank)
+   ranked_profiles[[i]] <- cs_profile$name_profile
+   names_profiles[i] <- name_p
+   
+   #nos guardamos nombres únicos de fáramcos 
+   ranked_drugs[[i]] <- unique(cs_profile$cmap_name)
+   names_drugs[i] <- name_p
+}
+names(ranked_profiles) <- names_profiles
+names(ranked_drugs) <- names_drugs
+```
+   
+   - *Profiles*
+   
+```{r, echo=FALSE}
+freq_profiles <- unlist(ranked_profiles)
+x <- as.data.frame(table(freq_profiles)) %>% filter(Freq >=2) %>% rename(name_profile = freq_profiles) %>% arrange(desc(Freq))
+```
+
+```{r}
+profiles_ALL_male <- x %>% inner_join(meta, by = "name_profile") 
+```
+   
+```{r}
+write.csv(profiles_ALL_male, "/AD_Meta-analysis_results/Results/ALL_male/profiles_ALL_male.csv")
+```
+
+```{r}
+drugs_ALL_male <- profiles_ALL_male %>% distinct(cmap_name)
+```
+
+```{r}
+write.csv(drugs_ALL_male, "/AD_Meta-analysis_results/Results/ALL_male/drugs_ALL_male.csv")
+```
+
+   
+```{r}
+##files by metric
+ALL_male_cmap1 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/ALL_male/ALL_male_cmap1.rds") %>% 
+   select(name_profile, scaled_score) %>% 
+   mutate(metric = "cmap1") %>%
+   rename( CS = scaled_score) %>%
+   arrange(CS)
+
+ALL_male_cmap2 <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/ALL_male/ALL_male_cmap2.rds")  %>% 
+   select(name_profile, ncs) %>% 
+   mutate(metric = "cmap2") %>%
+   rename( CS = ncs) %>%
+   arrange(CS)
+
+ALL_male_ZhangS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/ALL_male/ALL_male_ZangS.rds")%>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "CSS") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+
+ALL_male_200_XsumS <- readRDS("/AD_Meta-analysis_results/Results_analysis_complete/ALL_male/ALL_male_200_XsumS.rds") %>% 
+   select(name_profile, Score) %>% 
+   mutate(metric = "XSum") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+
+```{r}
+all_metrics_ALL_male <- rbind(ALL_male_cmap1, ALL_male_cmap2, ALL_male_ZhangS, ALL_male_200_XsumS ) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4 <- profiles_ALL_male %>% filter(Freq == 4) %>% .$name_profile
+frec3 <- profiles_ALL_male %>% filter(Freq == 3) %>% .$name_profile
+frec2 <- profiles_ALL_male %>% filter(Freq == 2) %>% .$name_profile
+```
+
+```{r}
+frec4 <- all_metrics_ALL_male %>% filter(name_profile %in% frec4)
+frec3 <- all_metrics_ALL_male %>% filter(name_profile %in% frec3)
+frec2 <- all_metrics_ALL_male %>% filter(name_profile %in% frec2)
+```
+
+```{r}
+png(filename = "/images/ALL_male_curves.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_ALL_male, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2, aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+
+ *cor & Cos metrics: comparative analysis* 
+
+```{r}
+all_male_cor <- readRDS("/AD_Meta-analysis_results/Results/results_cor/ALL_male_Cor.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cor_Pearson") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+all_male_cos <- readRDS("/AD_Meta-analysis_results/Results/results_cor/ALL_male_Coss.rds")%>% 
+   select(name_profile, Score, cmap_name) %>% 
+   mutate(metric = "Cosine") %>%
+   rename(CS = Score) %>%
+   arrange(CS)
+```
+
+```{r}
+all_metrics_cor <- rbind(all_male_cor, all_male_cos) %>% group_by(metric) %>% mutate(Pos = row_number())
+```
+
+```{r}
+frec4_cor <- all_metrics_cor %>% filter(name_profile %in% frec4$name_profile) 
+frec3_cor <- all_metrics_cor %>% filter(name_profile %in% frec3$name_profile)  
+frec2_cor <- all_metrics_cor %>% filter(name_profile %in% frec2$name_profile)  #%>% select(name_profile, CS, Pos)
+```
+
+```{r}
+png(filename = "/images/ALL_male_comparative_cor.png", height = 1200, width = 1700, res = 300)
+ggplot(all_metrics_cor, aes(x = Pos, y=CS)) + 
+  geom_point(size = 0.2)+ 
+   geom_point(data =frec2_cor , aes(x = Pos, y=CS), color = "green",size = 1)+
+   geom_point(data =frec3_cor, aes(x = Pos, y=CS), color = "red", size = 1)+
+   geom_point(data =frec4_cor, aes(x = Pos, y=CS), color = "blue", size = 1.5)+
+   theme(
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 7),
+  axis.title.y = element_text(vjust = 1, size = 8),
+  axis.title.x = element_text(vjust = -1, size = 8),
+  legend.position="bottom") +
+  facet_wrap(~metric, nrow=1, scales = "free")  +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+       
+dev.off()
+```
+
+*intersect*
+
+```{r, echo=FALSE}
+ALL_f <- drugs_ALL_female %>% select(cmap_name) %>% distinct() %>% .$cmap_name
+ALL_m <- drugs_ALL_male %>% select(cmap_name) %>% distinct() %>% .$cmap_name
+drugs_total <- list(ALL_f, ALL_m)
+overlap_up <- calculate.overlap(drugs_total)
+```
+
+
+```{r, echo=FALSE}
+# intersect drugs
+venn.diagram(
+    x = list(ALL_f, ALL_m),
+  category.names = c("Mujeres", "Hombres"),
+  filename = '/images/drugsnames_ALL_venn.png',
+  output = TRUE,
+          imagetype="png",
+          height = 480 , 
+          width = 480 , 
+          resolution = 300,
+          compression = "lzw",
+          lwd = 0.3,
+          col = "white",
+          fill = c(alpha('#1f78b4',0.3), alpha("#edf8b1",1)),
+          cex = 0.4,
+          fontfamily = "sans",
+          cat.cex = 0.3,
+          cat.fontface = "bold",
+          cat.default.pos = "outer",
+          cat.fontfamily = "sans",
+          cat.col = "black",
+          #rotation = 1
+        )
+```
+
+
+```{r}
+# intersect drugs
+venn.diagram(
+    x = list(HP_f, HP_m, ALL_f, ALL_m),
+  category.names = c("HP_M", "HP_H", "CT+HP_M", "CT+HP_H"),
+  filename = '/images/drugsnames_HP_ALL_venn.png',
+  output = TRUE,
+          imagetype="png",
+          height = 480 , 
+          width = 480 , 
+          resolution = 300,
+          compression = "lzw",
+          lwd = 0.3,
+          col = "white",
+          fill = c(alpha('#1f78b4',0.3), alpha("#edf8b1",1), alpha("#2c7fb8",0.3), alpha("#8856a7",0.3)), 
+          cex = 0.4,
+          fontfamily = "sans",
+          cat.cex = 0.3,
+          cat.fontface = "bold",
+          cat.default.pos = "outer",
+          cat.fontfamily = "sans",
+          cat.col = "black",
+          #rotation = 1
+        )
+```
+
+
+```{r}
+# intersect drugs
+venn.diagram(
+    x = list(CT_f, CT_m, ALL_f, ALL_m),
+  category.names = c("CT_M", "CT_H", "CT+HP_M", "CT+HP_H"),
+  filename = '/images/drugsnames_CT_ALL_venn.png',
+  output = TRUE,
+          imagetype="png",
+          height = 480 , 
+          width = 480 , 
+          resolution = 300,
+          compression = "lzw",
+          lwd = 0.3,
+          col = "white",
+          fill = c(alpha('#1f78b4',0.3), alpha("#edf8b1",1), alpha("#2c7fb8",0.3), alpha("#8856a7",0.3)), 
+          cex = 0.4,
+          fontfamily = "sans",
+          cat.cex = 0.3,
+          cat.fontface = "bold",
+          cat.default.pos = "outer",
+          cat.fontfamily = "sans",
+          cat.col = "black",
+          #rotation = 1
+        )
+```
+
+```{r, echo = FALSE}
+library(UpSetR)
+```
+
+```{r, echo = FALSE}
+x = list(HP_f, CT_f, ALL_f, HP_m, CT_m, ALL_m)
+names(x) <- c("HP_f", "CT_f", "ALL_f", "HP_m", "CT_m", "ALL_m")
+upset(fromList(x), order.by = "freq", nsets = 6)
+```
+
+
+
+
+
+
+
+
+
+     
+
+
+
+

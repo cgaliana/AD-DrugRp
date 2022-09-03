@@ -1,0 +1,130 @@
+---
+title: "Annotations_genes"
+author: "Cristina_Galiana"
+date: "24/5/2022"
+output: html_document
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/ORA')
+```
+
+```{r}
+suppressPackageStartupMessages({
+library(org.Hs.eg.db)
+library(GO.db)
+library(KEGG.db)
+library(reactome.db)
+library(tidyverse)
+library(AnnotationDbi)
+library(biomaRt)})
+```
+
+```{r}
+dir.create("annotations")
+```
+
+- Build a custom annotation database for enricher function (TERM2GENE & TERM2NAME)
+
+```{r}
+keys <- keys(org.Hs.eg.db, keytype="SYMBOL")
+```
+
+*GO*
+
+```{r}
+Hs_go <- AnnotationDbi::select(org.Hs.eg.db, keys= keys, columns=c("SYMBOL", "GO"), keytype="SYMBOL") 
+```
+
+```{r}
+## GO_ids by ontologie
+Hs_go.BP <- Hs_go %>% filter(ONTOLOGY == "BP") %>% dplyr::select(GO, SYMBOL) %>% 
+  drop_na() %>%
+  distinct()
+Hs_go.MF <- Hs_go %>% filter(ONTOLOGY == "MF") %>% dplyr::select(GO, SYMBOL) %>% 
+  drop_na() %>%
+  distinct()
+Hs_go.CC <- Hs_go %>% filter(ONTOLOGY == "CC") %>% dplyr::select(GO, SYMBOL) %>% 
+  drop_na() %>%
+  distinct()
+```
+
+```{r}
+## keytypes(GO.db)
+GOIDs <- Hs_go$GO
+Hs_go_terms <- select(GO.db, keys=GOIDs, columns=c("TERM", "ONTOLOGY"), keytype="GOID") 
+```
+
+```{r}
+## GO_terms by ontologies
+Hs_go_terms.BP <- Hs_go_terms %>% filter(ONTOLOGY == "BP") %>% dplyr::select(GOID, TERM) %>% 
+  drop_na() %>%
+  distinct()
+Hs_go_terms.MF <- Hs_go_terms %>% filter(ONTOLOGY == "MF") %>% dplyr::select(GOID, TERM) %>% 
+  drop_na() %>%
+  distinct()
+Hs_go_terms.CC <- Hs_go_terms %>% filter(ONTOLOGY == "CC") %>% dplyr::select(GOID, TERM) %>% 
+  drop_na() %>%
+  distinct()
+```
+
+  **KEGG**
+
+```{r}
+Hs_kegg <- select(org.Hs.eg.db, keys=keys,columns=c("SYMBOL", "PATH"), keytype="SYMBOL") %>%
+  drop_na() %>%
+  distinct()
+```
+
+```{r}
+# we've obtained 229 different paths
+Hs_kegg %>% dplyr::select(PATH) %>% distinct()
+```
+
+```{r}
+kegg_db <- as.data.frame(KEGGPATHNAME2ID) %>% dplyr::rename(PATH = path_id)
+```
+
+```{r}
+Hs_kegg_terms <- Hs_kegg %>% left_join(kegg_db, by ="PATH") %>% dplyr::select(PATH, path_name) %>% distinct()
+```
+
+
+*Reactome*
+
+```{r}
+## listMarts()
+mart <- useMart(biomart = "ensembl", dataset = "hsapiens_gene_ensembl")
+```
+
+```{r}
+Hs_reac <- getBM(attributes=c('external_gene_name', 'reactome'), values= TRUE , mart= mart)
+```
+
+```{r}
+Hs_reac <- Hs_reac[!(Hs_reac$reactome == ""),  ] 
+colnames(Hs_reac) <- c("SYMBOL", "REACTOME_ID")
+```
+
+```{r}
+#table(duplicated(Hs_reac))
+## Hs_reac %>% dplyr::select(REACTOME_ID) %>% distinct()
+```
+
+```{r}
+reactome_db <- as.data.frame(reactomePATHID2NAME) 
+colnames(reactome_db) <- c("REACTOME_ID", "DESCRIPTION")
+```
+
+```{r}
+Hs_reac_terms <- Hs_reac %>% left_join(reactome_db, by ="REACTOME_ID") %>% dplyr::select(REACTOME_ID, DESCRIPTION) %>% distinct()
+```
+
+```{r}
+save(Hs_go.BP, Hs_go.MF, Hs_go.CC,Hs_go_terms.BP, Hs_go_terms.MF, Hs_go_terms.CC, Hs_kegg, Hs_kegg_terms, Hs_reac, Hs_reac_terms, file = "annotations/annot_genes.RData")
+```
+
+

@@ -1,0 +1,310 @@
+---
+title: "Exploratory_Metadata_Drugs"
+author: "Cristina_Galiana"
+date: "15/4/2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/RESULTS')
+```
+
+```{r}
+library (dplyr, warn.conflicts = FALSE)
+library(ggplot2)
+library(paletteer)
+library(viridis)
+library(stringr)
+library(gridExtra)
+library(tidyverse)
+library(RColorBrewer)
+library(VennDiagram)
+library(ggbreak)
+library(gtable)
+library(purrr)
+library(tidyr)
+```
+
+
+```{r}
+npc <- readRDS("NPC/complete_info.rds") %>% mutate(cell_iname = "NPC")  %>% filter(!is.na(name_profile))
+neu <- readRDS("NEU/complete_info.rds") %>% mutate(cell_iname = "NEU") %>% filter(!is.na(name_profile))
+mneu <- readRDS("MNEU/complete_info.rds") %>% mutate(cell_iname = "MNEU") %>% filter(!is.na(name_profile))
+```
+
+```{r}
+all_cell_complete_info <- rbind(npc, neu, mneu)
+```
+
+```{r}
+write.table(all_cell_complete_info, file = "Data/metadata_DrugsDB.txt", sep = "\t")
+```
+
+```{r}
+# import meatadata_drugs & drugs annotations from DrugBank + Lincs
+metadata_Drugs <- read.table(file = "metadata_DrugsDB.txt", header = TRUE, sep = "\t")
+drugbank <- readRDS("drugsAnnotation.rds")
+```
+
+```{r}
+# Total drugs screened
+nrow(metadata_Drugs %>% distinct(drug))
+# Total PEGf (Drug-induced gene expression profiles)
+nrow(metadata_Drugs %>% distinct(name_profile))
+```
+
+```{r}
+# Drugs by cell line
+drugs_by_cell <- metadata_Drugs %>% distinct(drug, cell_iname) %>% group_by(cell_iname) %>% summarise(n = n()) %>% rename(drugs = n)
+```
+
+```{r}
+
+png(filename = "/images/drugs_by_cell.png", height = 1200, width = 1200, res = 300 )
+p_cell <-  ggplot(data = drugs_by_cell, aes(x = cell_iname, y = drugs)) +
+  geom_bar(stat="identity", fill = "sky blue") + labs( x="Línea Celular", y = "Número de fármacos") + 
+  scale_x_discrete(limits = c("NPC", "NEU", "MNEU")) +
+  geom_text(aes(label=n), vjust=1.8, color="black", position = position_dodge(0.9),  size=4.0) +
+  theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = "None",
+  axis.text = element_text(colour = "black", size = 10),
+  axis.title.x = element_text(vjust = -1, size = 11),
+  axis.title.y = element_text(vjust = 2, size = 11))
+```
+
+```{r}
+# PEGf by cell line
+profiles_by_cell <- metadata_Drugs %>% distinct(name_profile, cell_iname) %>% group_by(cell_iname) %>% summarise(n = n()) %>% rename(profiles = n)
+```
+
+```{r}
+png(filename = "/images/profiles_by_cell.png", height = 1200, width = 1200, res = 300)
+  p_profile <- ggplot(data = profiles_by_cell, aes(x = cell_iname, y = profiles)) +
+  geom_bar(stat="identity", fill = "sky blue") + labs( x="Línea Celular", y = "Número de PEGf") + 
+  scale_x_discrete(limits = c("NPC", "NEU", "MNEU")) +
+  geom_text(aes(label=n), vjust=1.8, color="black", position = position_dodge(0.9),  size=4.0) +
+  theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  legend.position = "None",
+  axis.text = element_text(colour = "black", size = 10),
+  axis.title.x = element_text(vjust = -1, size = 11),
+  axis.title.y = element_text(vjust = 2, size = 11))
+dev.off()
+```
+
+```{r}
+# Drugs and PEGf by cell line
+drugs_by_cell <- drugs_by_cell %>% rename(number = drugs) %>% mutate(feature = "Fármacos")
+profiles_by_cell <- profiles_by_cell %>% rename(number = profiles) %>%mutate(feature = "PEGf")
+```
+
+```{r}
+merge <- rbind(drugs_by_cell, profiles_by_cell)
+```
+
+```{r}
+png(filename = "/images/pandd_by_cell.png", height = 1200, width = 1700, res = 300)
+ggplot(data=merge, aes(x = cell_iname, y = number)) +
+  geom_col(data = merge, color = "Blue", aes(x = cell_iname, y = number, fill = cell_iname)) +
+  labs(y = "N")   +
+  scale_fill_brewer(palette = "Blues", direction = -1, name = "Línea Celular")+
+  geom_text(aes(label=number), vjust=1.3, color="red", position = position_dodge(0.9),  size=3.5) +
+  theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 10),
+  axis.title.y = element_text(vjust = -1, size = 11),
+  axis.text.x = element_blank(),
+  axis.ticks.x  = element_blank(),
+  axis.title.x = element_blank(),
+  legend.position="bottom") +
+  facet_grid(~ feature) +
+  theme(strip.text.x = element_text(size = 11, colour = "black" )) 
+
+dev.off()
+
+```
+
+```{r}
+# treatment dose & time distribution by cell_line
+dose_time <- metadata_Drugs %>% select(cell_iname, dose, time) %>% group_by(cell_iname, dose, time) %>% summarize(n = n())
+```
+
+```{r}
+dose_time$dose <- factor(dose_time$dose,levels = c("0.04 uM", "0.12 uM", "0.37 uM", "1.11 uM", "3.33 uM", "10 uM", "30 uM", "60 uM","125 uM"))
+```
+
+```{r}
+png(filename = "/home/cristina/Escritorio/images/dose_time_distrib_2.png", height = 1200, width = 1700, res = 300)
+ggplot(data=dose_time) +
+  geom_col( aes(x = dose, y = n, fill = time)) +
+  labs(x = "Concentración")   +
+  labs(y = "N", size =9) +
+  scale_fill_brewer(palette = "Blues", direction = -1, name = "Tiempo")+
+  geom_text(aes(x = dose, y = n, label=n), color="red",  size=2.5, vjust = -1) +
+  scale_y_break(c(260, 450))+
+  scale_y_break(c(750, 3800))+
+  theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 0.5),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.y = element_text(vjust = 1, size = 9),
+  axis.title.x = element_text(vjust = -1, size = 9),
+  axis.text.x = element_text(angle = 90),
+  axis.ticks.y  = element_blank(),
+  #axis.title.x = element_blank(),
+  legend.position="bottom",
+  legend.title=element_text(size=9),
+  )+
+  ylim(0, 4000)+
+ # facet_wrap(. ~ cell_iname, scales="free_y") +
+  facet_grid(~ cell_iname) +
+  theme(strip.text.x = element_text(size = 8, colour = "black" ))
+dev.off()
+```
+
+```{r}
+# drugs by status
+drugs_by_status <- drugbank %>% filter(!is.na(status))  %>% 
+  select(cmap_name, status) %>% 
+  distinct() %>%
+  separate_rows(status) %>%
+  group_by(status) %>%
+  summarise(number = n())
+```
+
+```{r}
+png(filename = "/home/cristina/Escritorio/images/drugs_by_status.png", height = 1200, width = 1600, res = 300)
+ggplot(data = drugs_by_status, aes(x = reorder(status,number), y = number)) +
+  geom_col(color = "Blue", size = 0.3, aes(fill = status)) +
+  labs(y = "N", x = "status")   +
+  scale_fill_brewer(palette = "Blues", direction = 1, name = "Status")+
+  geom_text(aes(label=number), hjust=1.5, color="red",  size=3) +
+  theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 9),
+  axis.title.y = element_text(vjust = 1, size = 10),
+  legend.position = "None")+
+  coord_flip() + scale_x_discrete(name ="Estado de uso", 
+                    labels=c( "approved"="Aprobado" , "investigational"="Investigación" , "experimental"="Experimental","vet"="Uso veterinario"  , "withdrawn"="Retirado"  , "nutraceutical"="Nutracéutico" , "Illicit" = "Ilícito"))
+
+dev.off()
+```
+
+# drugs by ATC CODE LEVEL 1 & MOA
+
+```{r}
+drugs_by_ATC <- drugbank %>% filter(!is.na(level_1) & !is.na(moa.x)) %>% select(cmap_name, level_1) %>% mutate(level_1 =tolower(level_4)) %>% group_by(level_1)%>%summarise(n = n()) 
+```
+
+```{r}
+write.table(drugs_by_ATC, "drugs_by_ATC.txt")
+```
+
+```{r}
+drugs_by_ATC_mod <-read.table("drugs_by_ATC.txt", header = TRUE)
+```
+
+```{r}
+png(filename = "/images/drugs_by_ATC.png", height = 1200, width = 2000, res = 300)
+ggplot(data = drugs_by_ATC_mod, aes(x = reorder(level_4, n), y = n)) +
+  geom_col(color = "Black", size = 0.3, aes(fill = level_4)) +
+  labs(x = "", y = "N")   +
+ # scale_fill_brewer(palette = "YlGnBu", direction = 1, name = "CÓDIGO ATC Nivel-1")+
+  geom_text(aes(label=n), hjust=1.2, color="red",  size=3) +
+  theme(
+  panel.background = element_rect(fill = NA),
+  panel.grid.major = element_line(inherit.blank = TRUE),
+  panel.border = element_rect(fill = "transparent",  size = 1),
+  axis.text = element_text(colour = "black", size = 8),
+  axis.title.y = element_text(vjust = -1, size = 10),
+  legend.position = "None")+
+  coord_flip() 
+
+dev.off()
+```
+
+  
+```{r}
+# intersect drugs
+venn.diagram(
+  x = list(
+    metadata_Drugs %>% filter(cell_iname=="NPC") %>% distinct() %>% select(drug) %>% unlist(), 
+    metadata_Drugs %>% filter(cell_iname=="NEU") %>% distinct() %>% select(drug) %>% unlist(), 
+    metadata_Drugs %>% filter(cell_iname=="MNEU") %>% distinct()%>% select(drug) %>% unlist()
+    ),
+  # disable.logging = TRUE, #Boolean to disable log file output and print to console instead
+  category.names = c("NPC" , "NEU" , "MNEU"),
+  filename = '/home/cristina/Escritorio/images/drugsnames_venn.png',
+  output = TRUE ,
+          imagetype="png",
+          height = 480 , 
+          width = 480 , 
+          resolution = 300,
+          compression = "lzw",
+          lwd = 0.3,
+          col = "white",
+          fill = c(alpha('#1f78b4',0.3), alpha("#edf8b1",1), alpha('#b2df8a',1)),
+          cex = 0.4,
+          fontfamily = "sans",
+          cat.cex = 0.3,
+          cat.fontface = "bold",
+          cat.default.pos = "outer",
+          cat.fontfamily = "sans",
+          cat.col = "black",
+          rotation = 1
+        )
+
+```
+
+```{r}
+# intersect profiles
+venn.diagram(
+  x = list(
+    metadata_Drugs %>% filter(cell_iname=="NPC") %>% distinct() %>% select(name_profile) %>% unlist(), 
+    metadata_Drugs %>% filter(cell_iname=="NEU") %>% distinct() %>% select(name_profile) %>% unlist(), 
+    metadata_Drugs %>% filter(cell_iname=="MNEU") %>% distinct()%>% select(name_profile) %>% unlist()
+    ),
+  category.names = c("NPC" , "NEU" , "MNEU"),
+  filename = '/home/cristina/Escritorio/images/profiles_venn.png',
+  output = TRUE ,
+          imagetype="png",
+          height = 480 , 
+          width = 480 , 
+          resolution = 300,
+          compression = "lzw",
+          lwd = 0.3,
+          col = "white",
+          fill = c(alpha('#1f78b4',0.3), alpha("#edf8b1",1), alpha('#b2df8a',1)),
+          cex = 0.4,
+          fontfamily = "sans",
+          cat.cex = 0.3,
+          cat.fontface = "bold",
+          cat.default.pos = "outer",
+          cat.fontfamily = "sans",
+          cat.col = "black",
+          rotation = 1
+        )
+```
+
+```{r}
+# saving common profiles
+common_profiles <- metadata_Drugs %>% select(name_profile, cell_iname) %>%
+  group_by(name_profile) %>%
+  summarize(n = n()) %>%
+  arrange(desc(n)) %>%
+  filter(n == 3) %>%
+  .$name_profile
+```
+

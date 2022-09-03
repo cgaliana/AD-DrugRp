@@ -1,0 +1,45 @@
+---
+title: "all_reactome_pathways"
+author: "Cristina_Galiana"
+date: "30/6/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+all <- readRDS("events_complete_all.rds") %>% mutate(region = "HP+CT")
+hp <- readRDS("events_complete_HP.rds") %>% mutate(region = "HP")
+ct <- readRDS("events_complete_ct.rds") %>% mutate(region = "CT")
+```
+
+```{r}
+all_date <- rbind(all, hp, ct)
+```
+
+```{r}
+png(filename = "/images/reactome_all.png", height = 1200, width = 2000, res = 300)
+ggplot(all_date, aes(x=Event_name, fill = sex)) +
+    geom_bar(position="stack") +
+    xlab("MOA") +
+    ylab("Número de fármacos")+
+      coord_flip()+
+  theme(
+    axis.text = element_text(colour = "black", size = 7.5),
+    #axis.text.x = element_blank(),
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 8),
+    axis.title.x = element_text(vjust = -1, size = 8),
+    axis.title.y = element_text(vjust = 2, size = 8),
+    panel.grid.major = element_line(inherit.blank = TRUE),
+    panel.border = element_rect(fill = "transparent",  size = 0.7),
+    strip.text.x = element_text(size = 10),
+    strip.background = element_rect(color="black", fill="gray", size=0.5, linetype="solid"))+
+    facet_grid(~ region, scales = "free_x") 
+dev.off()
+
+```
+

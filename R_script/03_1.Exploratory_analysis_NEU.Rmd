@@ -1,0 +1,677 @@
+---
+title: "exploratory_analysis_NEU"
+author: "Cristina_Galiana"
+date: "21/3/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_knit$set(root.dir = '/exploratory_analysis/NEU')
+```
+
+```{r}
+suppressPackageStartupMessages({
+library (dplyr)
+library(ggplot2)
+library(PCAtools)
+library(cowplot)
+library(ggplotify)
+library(stringr)
+library(limma)})
+```
+
+```{r}
+metadata_drugs <-read.table("metadata_DrugsDB.txt")
+```
+ 
+ 
+```{r}
+## select profiles
+profiles <- c("BIX-01294_10uM_24h", "fenretinide_10uM_24h","tacedinaline_10uM_24h", "sirolimus_10uM_24h", "vorinostat_10uM_24h")
+metadata_drugs %>% filter(cell_iname == "NEU") %>% filter(name_profile %in% profiles) %>% select(name_profile, n_batch)
+```
+ 
+   
+
+ 
+*tacedinaline_10uM_24h*- n_batch = 1
+  
+```{r}
+tacedinaline_10uM_24h <- readRDS("tacedinaline_10uM_24h.rds")
+```
+
+```{r}
+## PCA
+p_tacedinaline_10uM_24h <- pca(assay(tacedinaline_10uM_24h), metadata = colData(tacedinaline_10uM_24h), center = T)
+```
+ 
+```{r}
+## rna_plate
+png(filename = "/images/neu_tacedinaline_PCA_rna_plate.png", height = 1200, width = 1700, res = 300) 
+biplot(p_tacedinaline_10uM_24h, x = "PC1", y = "PC2", colby = "rna_plate", colLegendTitle = "rna_plate", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_tacedinaline_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_tacedinaline_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+```{r}
+##  batch_id
+png(filename = "/images/neu_tacedinaline_PCA_batch_id.png", height = 1200, width = 1700, res = 300) 
+biplot(p_tacedinaline_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_tacedinaline_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_tacedinaline_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+  
+ 
+```{r}
+## clustering
+d <- dist(t(assay(tacedinaline_10uM_24h)),method = "euclidean")
+cor_mat <- (1-cor(assay(tacedinaline_10uM_24h)))/2
+d_cor <- as.dist(cor_mat)
+```
+ 
+```{r}
+## euclidean
+d_hclust <- hclust(d, method = "average")
+
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(tacedinaline_10uM_24h)$sample_id, "Tratamiento" = colData(tacedinaline_10uM_24h)$pert_type, "rna_plate" = colData(tacedinaline_10uM_24h)$rna_plate)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+
+png(filename = "/images/neu_tacedinaline_hclust_eu.png", height = 1000, width = 800, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = rna_plate, col = Tratamiento, hjust = 0),
+              angle = 0, size = 1.5, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 1)) +
+    theme(legend.position = "bottom",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 5),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+ 
+ 
+```{r}
+## Pearson 
+d_hclust <- hclust(d_cor, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(tacedinaline_10uM_24h)$sample_id, "Tratamiento" = colData(tacedinaline_10uM_24h)$pert_type, "rna_plate" = colData(tacedinaline_10uM_24h)$rna_plate)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_tacedinaline_hclust_cor.png", height = 1000, width = 800, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = rna_plate, col = Tratamiento, hjust = 0),
+              angle = 0, size = 1.5, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "bottom",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 5),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+
+
+*fenretinide_10uM_24h*- n_batch = 2
+  
+```{r}
+fenretinide_10uM_24h <- readRDS("fenretinide_10uM_24h.rds")
+```
+
+```{r}
+## PCA
+p_fenretinide_10uM_24h <- pca(assay(fenretinide_10uM_24h), metadata = colData(fenretinide_10uM_24h), center = T)
+```
+ 
+
+```{r}
+## rna_plate
+png(filename = "/images/neu_fenretinide_PCA_rna_plate.png", height = 1200, width = 1700, res = 300) 
+biplot(p_fenretinide_10uM_24h, x = "PC1", y = "PC2", colby = "rna_plate", colLegendTitle = "rna_plate", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_fenretinide_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_fenretinide_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+      
+```{r}
+## batch_id
+png(filename = "/images/neu_fenretinide_PCA_batch_id.png", height = 1200, width = 1700, res = 300) 
+biplot(p_fenretinide_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_fenretinide_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_fenretinide_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+```{r}
+## RemoveBatchEffect()
+assay(fenretinide_10uM_24h) <- removeBatchEffect(assay(fenretinide_10uM_24h), colData(fenretinide_10uM_24h)[, "batch_id"])
+```
+
+```{r}
+p_fenretinide_10uM_24h <- pca(assay(fenretinide_10uM_24h), metadata = colData(fenretinide_10uM_24h), center = T)
+```
+ 
+```{r}
+png(filename = "/images/neu_fenretinide_PCA_batch_id_correct.png", height = 1200, width = 1700, res = 300) 
+biplot(p_fenretinide_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 1.5, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_fenretinide_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_fenretinide_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+```{r}
+## clustering
+d <- dist(t(assay(fenretinide_10uM_24h)),method = "euclidean")
+cor_mat <- (1-cor(assay(fenretinide_10uM_24h)))/2
+d_cor <- as.dist(cor_mat)
+```
+ 
+```{r}
+d_hclust <- hclust(d, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(fenretinide_10uM_24h)$sample_id, "Tratamiento" = colData(fenretinide_10uM_24h)$pert_type, "rna_plate" = colData(fenretinide_10uM_24h)$rna_plate, "batch_id" = colData(fenretinide_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_fenretinide_hclust_eu_correct.png", height = 1000, width = 800, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id, hjust = 0),
+              angle = 0, size = 1.5, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 1)) +
+    theme(legend.position = "bottom",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 5),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+ 
+ 
+```{r}
+d_hclust <- hclust(d_cor, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(fenretinide_10uM_24h)$sample_id, "Tratamiento" = colData(fenretinide_10uM_24h)$pert_type, "rna_plate" = colData(fenretinide_10uM_24h)$rna_plate, "batch_id" = colData(fenretinide_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_fenretinide_hclust_cor_correct.png", height = 1000, width = 800, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id , hjust = 0),
+              angle = 0, size = 1.5, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "bottom",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 5),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+
++ *BIX-01294_10uM_24h*- n_batch = 4
+  
+```{r}
+BIX_01294_10uM_24h <- readRDS("BIX-01294_10uM_24h.rds")
+```
+
+```{r}
+## PCA
+p_BIX_01294_10uM_24h <- pca(assay(BIX_01294_10uM_24h), metadata = colData(BIX_01294_10uM_24h), center = T)
+```
+ 
+```{r}
+## rna_plate
+png(filename = "/images/neu_BIX_01294_PCA_rna_plate.png", height = 1200, width = 1700, res = 300) 
+biplot(p_BIX_01294_10uM_24h, x = "PC1", y = "PC2", colby = "rna_plate", colLegendTitle = "rna_plate", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_BIX_01294_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_BIX_01294_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+
+```{r}
+## batch_id
+png(filename = "/images/neu_BIX_01294_PCA_batch_id.png", height = 1200, width = 1700, res = 300) 
+biplot(p_BIX_01294_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_BIX_01294_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_BIX_01294_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+```{r}
+## RemoveBatchEffect()
+assay(BIX_01294_10uM_24h) <- removeBatchEffect(assay(BIX_01294_10uM_24h), colData(BIX_01294_10uM_24h)[, "batch_id"])
+```
+  
+```{r}
+p_BIX_01294_10uM_24h <- pca(assay(BIX_01294_10uM_24h), metadata = colData(BIX_01294_10uM_24h), center = T)
+```
+ 
+```{r}
+png(filename = "/images/neu_BIX_01294_PCA_batch_id_correct.png", height = 1200, width = 1700, res = 300) 
+biplot(p_BIX_01294_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_BIX_01294_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_BIX_01294_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+```{r}
+## clustering
+d <- dist(t(assay(BIX_01294_10uM_24h)),method = "euclidean")
+cor_mat <- (1-cor(assay(BIX_01294_10uM_24h)))/2
+d_cor <- as.dist(cor_mat)
+```
+ 
+```{r}
+d_hclust <- hclust(d, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(BIX_01294_10uM_24h)$sample_id, "Tratamiento" = colData(BIX_01294_10uM_24h)$pert_type, "rna_plate" = colData(BIX_01294_10uM_24h)$rna_plate, "batch_id" = colData(BIX_01294_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_BIX_01294_hclust_eu_correct.png", height = 1500, width = 1000, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id, hjust = 0),
+              angle = 0, size = 1.5, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 1)) +
+    theme(legend.position = "bottom",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 3),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+ 
+```{r}
+d_hclust <- hclust(d_cor, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(BIX_01294_10uM_24h)$sample_id, "Tratamiento" = colData(BIX_01294_10uM_24h)$pert_type, "rna_plate" = colData(BIX_01294_10uM_24h)$rna_plate, "batch_id" = colData(BIX_01294_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_BIX_01294_hclust_cor_correct.png", height = 1500, width = 800, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id, hjust = 0),
+              angle = 0, size = 1.5, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "bottom",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 5),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+
++ *sirolimus_10uM_24h*- n_batch = 6
+  
+```{r}
+sirolimus_10uM_24h <- readRDS("sirolimus_10uM_24h.rds")
+```
+
+```{r}
+## PCA
+p_sirolimus_10uM_24h <- pca(assay(sirolimus_10uM_24h), metadata = colData(sirolimus_10uM_24h), center = T)
+```
+ 
+```{r}
+## rna_plate
+png(filename = "/images/neu_sirolimus_PCA_rna_plate.png", height = 1200, width = 1700, res = 300) 
+biplot(p_sirolimus_10uM_24h, x = "PC1", y = "PC2", colby = "rna_plate", colLegendTitle = "rna_plate", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_sirolimus_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_sirolimus_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+```{r}
+## batch_id
+png(filename = "/images/neu_sirolimus_PCA_batch_id.png", height = 1200, width = 1700, res = 300) 
+biplot(p_sirolimus_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_sirolimus_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_sirolimus_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+```{r}
+##  RemoveBatchEffect()
+assay(sirolimus_10uM_24h) <- removeBatchEffect(assay(sirolimus_10uM_24h), colData(sirolimus_10uM_24h)[, "batch_id"])
+```
+  
+```{r}
+p_sirolimus_10uM_24h <- pca(assay(sirolimus_10uM_24h), metadata = colData(sirolimus_10uM_24h), center = T)
+```
+ 
+```{r}
+png(filename = "/images/neu_sirolimus_PCA_batch_id_correct.png", height = 1200, width = 1700, res = 300) 
+biplot(p_sirolimus_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 3, legendPosition = 'right', xlab = paste0("PC1", ", ", round(p_sirolimus_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_sirolimus_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+
+```{r}
+## clustering
+d <- dist(t(assay(sirolimus_10uM_24h)),method = "euclidean")
+cor_mat <- (1-cor(assay(sirolimus_10uM_24h)))/2
+d_cor <- as.dist(cor_mat)
+```
+ 
+```{r}
+d_hclust <- hclust(d, method = "average")
+
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(sirolimus_10uM_24h)$sample_id, "Tratamiento" = colData(sirolimus_10uM_24h)$pert_type, "rna_plate" = colData(sirolimus_10uM_24h)$rna_plate, "batch_id" = colData(sirolimus_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_sirolimus_hclust_eu.png", height = 1000, width = 700, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id, hjust =- 0.5),
+              angle = 0, size = 1, check_overlap = FALSE) +
+    coord_flip() + 
+    scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "none",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 3),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+ 
+```{r}
+d_hclust <- hclust(d_cor, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(sirolimus_10uM_24h)$sample_id, "Tratamiento" = colData(sirolimus_10uM_24h)$pert_type, "rna_plate" = colData(sirolimus_10uM_24h)$rna_plate, "batch_id" = colData(sirolimus_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_sirolimus_hclust_cor.png", height = 1000, width = 700, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id, hjust = -0.5),
+              angle = 0, size = 1, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "none",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 5),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+
++ *vorinostat_10uM_24h*- n_batch = 11
+  
+```{r}
+vorinostat_10uM_24h <- readRDS("vorinostat_10uM_24h.rds")
+```
+
+```{r}
+## PCA
+p_vorinostat_10uM_24h <- pca(assay(vorinostat_10uM_24h), metadata = colData(vorinostat_10uM_24h), center = T)
+```
+ 
+```{r}
+## rna_plate
+png(filename = "/images/neu_vorinostat_PCA_rna_plate.png", height = 1200, width = 1200, res = 300) 
+biplot(p_vorinostat_10uM_24h, x = "PC1", y = "PC2", colby = "rna_plate", colLegendTitle = "rna_plate", shape = "pert_type", pointSize = 1.5, legendPosition = 'none', xlab = paste0("PC1", ", ", round(p_vorinostat_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_vorinostat_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+
+```{r}
+##  batch_id
+png(filename = "/images/neu_vorinostat_PCA_batch_id.png", height = 1200, width = 1200, res = 300) 
+biplot(p_vorinostat_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 1.5, legendPosition = 'none', xlab = paste0("PC1", ", ", round(p_vorinostat_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_vorinostat_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+ 
+```{r}
+## clustering
+d <- dist(t(assay(vorinostat_10uM_24h)),method = "euclidean")
+cor_mat <- (1-cor(assay(vorinostat_10uM_24h)))/2
+d_cor <- as.dist(cor_mat)
+```
+
+```{r}
+d_hclust <- hclust(d, method = "average")
+
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(vorinostat_10uM_24h)$sample_id, "Tratamiento" = colData(vorinostat_10uM_24h)$pert_type, "batch_id" = colData(vorinostat_10uM_24h)$rna_plate, "batch_id" = colData(vorinostat_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_vorinostat_hclust_eu.png", height = 1000, width = 700, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id, hjust =- 0.5),
+              angle = 0, size = 0.5, check_overlap = FALSE) +
+    coord_flip() + 
+    scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "none",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 3),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+ 
+```{r}
+d_hclust <- hclust(d_cor, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(vorinostat_10uM_24h)$sample_id, "Tratamiento" = colData(vorinostat_10uM_24h)$pert_type, "rna_plate" = colData(vorinostat_10uM_24h)$rna_plate, "batch_id" = colData(vorinostat_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_vorinostat_hclust_cor.png", height = 1000, width = 700, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id, hjust = -0.5),
+              angle = 0, size = 0.5, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "none",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 5),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+
+```{r}
+##  RemoveBatchEffect()
+assay(vorinostat_10uM_24h) <- removeBatchEffect(assay(vorinostat_10uM_24h), colData(vorinostat_10uM_24h)[, "batch_id"])
+```
+  
+```{r}
+p_vorinostat_10uM_24h <- pca(assay(vorinostat_10uM_24h), metadata = colData(vorinostat_10uM_24h), center = T)
+```
+ 
+```{r}
+png(filename = "/images/neu_vorinostat_PCA_batch_id_correct.png", height = 1200, width = 1200, res = 300) 
+biplot(p_vorinostat_10uM_24h, x = "PC1", y = "PC2", colby = "batch_id", colLegendTitle = "batch_id", shape = "pert_type", pointSize = 1.5, legendPosition = 'none', xlab = paste0("PC1", ", ", round(p_vorinostat_10uM_24h$variance["PC1"], digits = 2), "% varianza explicada"), ylab = paste0("PC2", ", ", round(p_vorinostat_10uM_24h$variance["PC2"], digits = 2), "% varianza explicada"),  gridlines.major = FALSE, gridlines.minor = FALSE, borderWidth = 0.8, borderColour = "black", legendLabSize = 8, legendTitleSize = 10, legendIconSize = 3, axisLabSize = 10, lab = NULL, returnPlot = TRUE)
+dev.off()
+```
+
+
+```{r}
+## clustering
+d <- dist(t(assay(vorinostat_10uM_24h)),method = "euclidean")
+cor_mat <- (1-cor(assay(vorinostat_10uM_24h)))/2
+d_cor <- as.dist(cor_mat)
+```
+
+```{r}
+d_hclust <- hclust(d, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(vorinostat_10uM_24h)$sample_id, "Tratamiento" = colData(vorinostat_10uM_24h)$pert_type, "batch_id" = colData(vorinostat_10uM_24h)$rna_plate, "batch_id" = colData(vorinostat_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "/images/neu_vorinostat_hclust_eu.png", height = 1000, width = 700, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = batch_id, col = Tratamiento, hjust =- 0.5),
+              angle = 0, size = 0.5, check_overlap = FALSE) +
+    coord_flip() + 
+    scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "right",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 3),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+ 
+```{r}
+d_hclust <- hclust(d_cor, method = "average")
+  
+dend <- as.dendrogram(d_hclust)
+  
+dend_data <- ggdendro::dendro_data(dend, type = "rectangle")
+meta_df <- data.frame("label" = colData(vorinostat_10uM_24h)$sample_id, "Tratamiento" = colData(vorinostat_10uM_24h)$pert_type, "rna_plate" = colData(vorinostat_10uM_24h)$rna_plate, "batch_id" = colData(vorinostat_10uM_24h)$batch_id)
+  
+dend_data$labels<- merge(dend_data$labels, meta_df, by.x = "label")
+  
+png(filename = "images/neu_vorinostat_hclust_cor.png", height = 1000, width = 700, res = 300) 
+ggplot(dend_data$segments) + 
+    geom_segment(aes(x = x, y = y, xend = xend, yend = yend), size = 0.3) +
+    geom_text(data = dend_data$labels, aes(x, y, label = Tratamiento, col = batch_id, hjust = -0.5),
+              angle = 0, size = 0.5, check_overlap = FALSE) +
+    coord_flip() + scale_y_reverse(expand = c(1, 0)) +
+    theme(legend.position = "none",
+          legend.title = element_text(size = 5),
+          legend.text = element_text(size = 5),
+          axis.line.y=element_blank(),
+          axis.ticks.y=element_blank(),
+          axis.text.y=element_blank(),
+          axis.title.y=element_blank(),
+          axis.title.x=element_blank(),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          panel.background=element_rect(fill="white"),
+          panel.grid=element_blank()
+          )
+    
+dev.off()
+```
+
