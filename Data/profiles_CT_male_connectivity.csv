@@ -1,0 +1,4 @@
+"","Freq","cmap_name","pert_idose","pert_itime","cell_iname","cmap1","cmap2","ZangS","XsumS"
+"1",3,"BG-1006","10uM","6h","NPC","14 (-0.83)","3 (-1.55)",NA,"2 (-20.15)"
+"2",2,"BRD-K33586157","10uM","24h","NPC",NA,"1 (-1.74)",NA,"1 (-20.88)"
+"3",2,"I-BET-151","1.11uM","24h","NPC","3 (-0.96)","2 (-1.61)",NA,NA
